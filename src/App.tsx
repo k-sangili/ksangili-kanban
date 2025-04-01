@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
@@ -13,8 +13,9 @@ import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
-const App = () => {
-  const [session, setSession] = useState<null | any>(null);
+// Create a component to handle auth state and routing
+const AppRoutes = () => {
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,23 +47,32 @@ const App = () => {
   }
 
   return (
+    <Routes>
+      <Route 
+        path="/" 
+        element={session ? <Index /> : <Navigate to="/auth" replace />} 
+      />
+      <Route 
+        path="/auth" 
+        element={!session ? <Auth /> : <Navigate to="/" replace />} 
+      />
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
+
+// Missing React import and useState
+import React, { useState } from "react";
+
+const App = () => {
+  return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
-            <Routes>
-              <Route 
-                path="/" 
-                element={session ? <Index /> : <Navigate to="/auth" replace />} 
-              />
-              <Route 
-                path="/auth" 
-                element={!session ? <Auth /> : <Navigate to="/" replace />} 
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <AppRoutes />
           </TooltipProvider>
         </AuthProvider>
       </BrowserRouter>
