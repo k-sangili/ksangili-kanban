@@ -49,6 +49,8 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     const fetchTasks = async () => {
       if (!user) {
         setLoading(false);
+        // Reset columns to default empty state when no user is logged in
+        setColumns(defaultColumns.map(col => ({ ...col, tasks: [] })));
         return;
       }
 
@@ -69,6 +71,8 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           return;
         }
 
+        console.log('Fetched tasks from Supabase:', data);
+
         // Transform the data to match our Task type
         const fetchedTasks: Task[] = data.map((task: any) => ({
           id: task.id.toString(),
@@ -79,8 +83,10 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           createdAt: new Date(task.created_at),
         }));
 
-        // Organize tasks into columns
-        const newColumns = [...defaultColumns];
+        // Create fresh columns with empty task arrays
+        const newColumns = defaultColumns.map(col => ({ ...col, tasks: [] }));
+        
+        // Now populate tasks into the appropriate columns
         fetchedTasks.forEach(task => {
           const column = newColumns.find(c => c.id === task.status);
           if (column) {
@@ -144,6 +150,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       setColumns(prev => {
         return prev.map(column => {
           if (column.id === task.status) {
+            // Add at the beginning of the array to show newest first
             return {
               ...column,
               tasks: [newTask, ...column.tasks],
