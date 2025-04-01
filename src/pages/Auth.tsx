@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ExternalLink } from 'lucide-react';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
@@ -102,9 +102,11 @@ const Auth = () => {
       if (error) {
         console.error("Google sign-in error:", error);
         
-        // Check for provider not enabled error
+        // Check for specific error conditions
         if (error.message.includes("provider is not enabled")) {
           setGoogleError("The Google provider is not enabled in your Supabase project. Please enable it in your Supabase dashboard under Authentication > Providers > Google.");
+        } else if (error.status === 403 || error.message.includes("403")) {
+          setGoogleError("Received a 403 Forbidden error. This usually means your Google OAuth credentials (Client ID and Secret) are missing or incorrect, or the redirect URLs are not properly configured in both Google Cloud Console and Supabase.");
         }
         
         throw error;
@@ -113,11 +115,15 @@ const Auth = () => {
       console.log("Google sign-in initiated successfully:", data);
     } catch (error: any) {
       console.error("Google sign-in exception:", error);
-      toast({
-        title: "Google Sign-In Error",
-        description: error.message || "Could not connect to Google. Make sure Google provider is enabled in Supabase.",
-        variant: "destructive",
-      });
+      
+      // If we haven't set a specific error message above, use a generic one
+      if (!googleError) {
+        toast({
+          title: "Google Sign-In Error",
+          description: error.message || "Could not connect to Google. Make sure Google provider is enabled in Supabase.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -208,7 +214,20 @@ const Auth = () => {
           {googleError && (
             <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4 text-sm flex gap-2">
               <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
-              <p className="text-amber-800">{googleError}</p>
+              <div className="text-amber-800">
+                <p>{googleError}</p>
+                <p className="mt-2 flex items-center gap-1">
+                  <a 
+                    href="https://supabase.com/dashboard/project/vzdystnqpizcrdryaqdq/auth/providers" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-amber-600 hover:text-amber-800 underline inline-flex items-center"
+                  >
+                    Configure Supabase Auth Providers
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </a>
+                </p>
+              </div>
             </div>
           )}
           
