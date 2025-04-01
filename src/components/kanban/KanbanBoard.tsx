@@ -35,7 +35,8 @@ const KanbanBoard: React.FC = () => {
         task.description,
         task.status,
         task.priority,
-        task.dueDate
+        task.dueDate,
+        task.owner
       );
     } else {
       if (currentTask.id) {
@@ -44,7 +45,8 @@ const KanbanBoard: React.FC = () => {
           task.title,
           task.description,
           task.priority,
-          task.dueDate
+          task.dueDate,
+          task.owner
         );
       }
     }
