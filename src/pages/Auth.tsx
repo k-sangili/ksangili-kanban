@@ -106,7 +106,11 @@ const Auth = () => {
         if (error.message.includes("provider is not enabled")) {
           setGoogleError("The Google provider is not enabled in your Supabase project. Please enable it in your Supabase dashboard under Authentication > Providers > Google.");
         } else if (error.status === 403 || error.message.includes("403")) {
-          setGoogleError("Received a 403 Forbidden error. This usually means your Google OAuth credentials (Client ID and Secret) are missing or incorrect, or the redirect URLs are not properly configured in both Google Cloud Console and Supabase.");
+          setGoogleError("Received a 403 Forbidden error. This usually means your Google OAuth credentials (Client ID and Secret) are missing or incorrect in Supabase.");
+        } else if (error.message.includes("redirect_uri_mismatch") || error.message.includes("400")) {
+          // Specific handler for redirect_uri_mismatch error
+          const redirectUrl = window.location.origin;
+          setGoogleError(`Error 400: redirect_uri_mismatch. The redirect URL in your Google OAuth configuration doesn't match the URL Supabase is using. Add this exact URL to your Google Cloud Console OAuth credentials as an authorized redirect URI: ${redirectUrl}`);
         }
         
         throw error;
@@ -120,7 +124,7 @@ const Auth = () => {
       if (!googleError) {
         toast({
           title: "Google Sign-In Error",
-          description: error.message || "Could not connect to Google. Make sure Google provider is enabled in Supabase.",
+          description: error.message || "Could not connect to Google",
           variant: "destructive",
         });
       }
@@ -216,7 +220,7 @@ const Auth = () => {
               <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
               <div className="text-amber-800">
                 <p>{googleError}</p>
-                <p className="mt-2 flex items-center gap-1">
+                <div className="mt-2 flex flex-col gap-1">
                   <a 
                     href="https://supabase.com/dashboard/project/vzdystnqpizcrdryaqdq/auth/providers" 
                     target="_blank" 
@@ -226,7 +230,16 @@ const Auth = () => {
                     Configure Supabase Auth Providers
                     <ExternalLink className="h-3 w-3 ml-1" />
                   </a>
-                </p>
+                  <a 
+                    href="https://console.cloud.google.com/apis/credentials" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-amber-600 hover:text-amber-800 underline inline-flex items-center"
+                  >
+                    Google Cloud Console OAuth Credentials
+                    <ExternalLink className="h-3 w-3 ml-1" />
+                  </a>
+                </div>
               </div>
             </div>
           )}
