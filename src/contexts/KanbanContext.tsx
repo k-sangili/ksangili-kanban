@@ -1,7 +1,6 @@
 
 import { createContext, useContext, useState, useEffect } from 'react';
 import { Task, TaskStatus, TaskPriority, KanbanColumn } from '@/types/kanban';
-import { v4 as uuidv4 } from 'uuid';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -20,7 +19,7 @@ const KanbanContext = createContext<KanbanContextType | undefined>(undefined);
 // When mapping tasks from Supabase, ensure we handle the due_date field properly
 const mapTaskFromSupabase = (task: any): Task => {
   return {
-    id: task.id,
+    id: task.id.toString(),
     title: task.title,
     description: task.description,
     status: task.status as TaskStatus,
@@ -60,10 +59,10 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       console.log('Fetching tasks for user:', user.id);
+      // For now, we fetch all tasks without user_id filtering since our table doesn't have this column yet
       const { data, error } = await supabase
         .from('tasks')
-        .select('*')
-        .eq('user_id', user.id);
+        .select('*');
 
       if (error) throw error;
 
@@ -105,46 +104,39 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const taskId = uuidv4();
-    
     try {
-      const { error } = await supabase
+      const taskData = {
+        title,
+        description,
+        status,
+        priority,
+        created_at: new Date().toISOString(),
+        due_date: dueDate.toISOString(),
+        owner: user.email || user.id
+      };
+
+      const { data, error } = await supabase
         .from('tasks')
-        .insert([
-          {
-            id: taskId,
-            title,
-            description,
-            status,
-            priority,
-            created_at: new Date().toISOString(),
-            user_id: user.id,
-            due_date: dueDate.toISOString(),
-            owner: user.email || user.id
-          },
-        ]);
+        .insert([taskData])
+        .select()
+        .single();
 
       if (error) throw error;
-
-      setColumns(prevColumns => {
-        const updatedColumns = prevColumns.map(column => {
-          if (column.id === status) {
-            return { ...column, tasks: [...column.tasks, {
-              id: taskId,
-              title,
-              description,
-              status,
-              priority,
-              createdAt: new Date(),
-              owner: user.email || user.id,
-              dueDate,
-            }] };
-          } else {
-            return column;
-          }
+      
+      if (data) {
+        const newTask = mapTaskFromSupabase(data);
+        
+        setColumns(prevColumns => {
+          const updatedColumns = prevColumns.map(column => {
+            if (column.id === status) {
+              return { ...column, tasks: [...column.tasks, newTask] };
+            } else {
+              return column;
+            }
+          });
+          return updatedColumns;
         });
-        return updatedColumns;
-      });
+      }
     } catch (error: any) {
       console.error('Error adding task:', error.message);
     }
@@ -155,7 +147,7 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase
         .from('tasks')
         .update({ status: newStatus })
-        .eq('id', id);
+        .eq('id', parseInt(id));
 
       if (error) throw error;
 
@@ -187,7 +179,7 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase
         .from('tasks')
         .update({ title, description, priority, due_date: dueDate.toISOString() })
-        .eq('id', id);
+        .eq('id', parseInt(id));
   
       if (error) throw error;
   
@@ -213,7 +205,7 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase
         .from('tasks')
         .delete()
-        .eq('id', id);
+        .eq('id', parseInt(id));
 
       if (error) throw error;
 
@@ -229,7 +221,7 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
     }
   };
   
-  // Add the moveTask function that was missing
+  // Add the moveTask function for drag and drop functionality
   const moveTask = async (id: string, newStatus: TaskStatus) => {
     // This is essentially an alias for updateTaskStatus for drag and drop functionality
     await updateTaskStatus(id, newStatus);

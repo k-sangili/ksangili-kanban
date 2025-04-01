@@ -189,6 +189,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
@@ -215,6 +216,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
+                      value={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
