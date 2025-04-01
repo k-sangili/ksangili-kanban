@@ -26,7 +26,6 @@ const priorityColors: Record<TaskPriority, string> = {
 
 const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
   const { deleteTask } = useKanban();
-  const createdDate = new Date(task.createdAt).toLocaleDateString();
   const dueDate = task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date';
   
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -72,18 +71,16 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
           </div>
         )}
         
-        <div className="flex items-center text-xs mb-2">
-          <Calendar className="h-3 w-3 mr-1" />
-          <span className={isOverdue ? "text-red-600 font-medium" : "text-gray-500"}>
-            {dueDate} {isOverdue && "(Overdue)"}
-          </span>
-        </div>
-        
         <div className="flex justify-between items-center">
           <Badge variant="outline" className={priorityColors[task.priority]}>
             {task.priority}
           </Badge>
-          <span className="text-xs text-gray-400">{createdDate}</span>
+          <div className="flex items-center text-xs">
+            <Calendar className="h-3 w-3 mr-1" />
+            <span className={isOverdue ? "text-red-600 font-medium" : "text-gray-500"}>
+              {dueDate} {isOverdue && "(Overdue)"}
+            </span>
+          </div>
         </div>
       </CardContent>
     </Card>
