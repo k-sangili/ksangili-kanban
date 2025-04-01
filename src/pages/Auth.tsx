@@ -88,18 +88,25 @@ const Auth = () => {
 
   const handleGoogleSignIn = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      console.log("Starting Google sign-in process...");
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: window.location.origin,
         },
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Google sign-in error:", error);
+        throw error;
+      }
+      
+      console.log("Google sign-in initiated successfully:", data);
     } catch (error: any) {
+      console.error("Google sign-in exception:", error);
       toast({
-        title: "Error",
-        description: error.message || "Could not connect to Google",
+        title: "Google Sign-In Error",
+        description: `Error: ${error.message || "Could not connect to Google"}. Make sure Google provider is enabled in Supabase.`,
         variant: "destructive",
       });
     }
