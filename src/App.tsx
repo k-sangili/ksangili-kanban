@@ -21,6 +21,7 @@ const App = () => {
     // Set up auth listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        console.log("Auth state changed:", event, currentSession);
         setSession(currentSession);
         setLoading(false);
       }
@@ -28,6 +29,7 @@ const App = () => {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      console.log("Initial session check:", currentSession);
       setSession(currentSession);
       setLoading(false);
     });
