@@ -3,7 +3,7 @@ import React from 'react';
 import { Task, TaskPriority } from '@/types/kanban';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Edit, Trash2, Calendar, User } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Calendar, Tag } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -64,23 +64,26 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
       <CardContent className="p-3 pt-2 pointer-events-auto">
         <p className="text-sm text-gray-500 mb-2 line-clamp-2">{task.description}</p>
         
-        {task.owner && (
-          <div className="flex items-center text-xs text-gray-500 mb-2 pointer-events-auto">
-            <User className="h-3 w-3 mr-1" />
-            <span className="truncate">{task.owner}</span>
-          </div>
-        )}
-        
-        <div className="flex justify-between items-center pointer-events-auto">
-          <Badge variant="outline" className={priorityColors[task.priority]}>
-            {task.priority}
-          </Badge>
-          <div className="flex items-center text-xs pointer-events-auto">
+        <div className="flex items-center justify-between mb-2 pointer-events-auto">
+          <div className="flex items-center text-xs text-gray-500 pointer-events-auto">
             <Calendar className="h-3 w-3 mr-1" />
             <span className={isOverdue ? "text-red-600 font-medium" : "text-gray-500"}>
               {dueDate} {isOverdue && "(Overdue)"}
             </span>
           </div>
+        </div>
+        
+        <div className="flex justify-between items-center pointer-events-auto">
+          <Badge variant="outline" className={priorityColors[task.priority]}>
+            {task.priority}
+          </Badge>
+          
+          {task.owner && (
+            <Badge variant="secondary" className="flex items-center gap-1 pointer-events-auto">
+              <Tag className="h-3 w-3" />
+              <span className="truncate max-w-[100px]">{task.owner}</span>
+            </Badge>
+          )}
         </div>
       </CardContent>
     </Card>

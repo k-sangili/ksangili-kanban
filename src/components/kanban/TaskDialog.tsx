@@ -40,7 +40,7 @@ const taskFormSchema = z.object({
   description: z.string().min(5, { message: 'Description must be at least 5 characters' }),
   status: z.enum(['backlog', 'todo', 'in-progress', 'done'] as const),
   priority: z.enum(['low', 'medium', 'high'] as const),
-  owner: z.string().optional(),
+  owner: z.string().nullable(),
   dueDate: z.date({
     required_error: "Due date is required",
   }),

@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect } from 'react';
 import { Task, TaskStatus, TaskPriority, KanbanColumn } from '@/types/kanban';
 import { useAuth } from './AuthContext';
@@ -7,9 +6,9 @@ import { supabase } from '@/integrations/supabase/client';
 type KanbanContextType = {
   columns: KanbanColumn[];
   loading: boolean;
-  addTask: (title: string, description: string, status: TaskStatus, priority: TaskPriority, dueDate: Date) => Promise<void>;
+  addTask: (title: string, description: string, status: TaskStatus, priority: TaskPriority, dueDate: Date, owner: string | null) => Promise<void>;
   updateTaskStatus: (id: string, status: TaskStatus) => Promise<void>;
-  updateTaskDetails: (id: string, title: string, description: string, priority: TaskPriority, dueDate: Date) => Promise<void>;
+  updateTaskDetails: (id: string, title: string, description: string, priority: TaskPriority, dueDate: Date, owner: string | null) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   moveTask: (id: string, newStatus: TaskStatus) => Promise<void>;
 };
@@ -98,7 +97,7 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const addTask = async (title: string, description: string, status: TaskStatus, priority: TaskPriority, dueDate: Date) => {
+  const addTask = async (title: string, description: string, status: TaskStatus, priority: TaskPriority, dueDate: Date, owner: string | null) => {
     if (!user) {
       console.error('Cannot add task: No user logged in.');
       return;
@@ -112,7 +111,7 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
         priority,
         created_at: new Date().toISOString(),
         due_date: dueDate.toISOString(),
-        owner: user.email || user.id
+        owner: owner || user.email || user.id
       };
 
       const { data, error } = await supabase
@@ -174,11 +173,17 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const updateTaskDetails = async (id: string, title: string, description: string, priority: TaskPriority, dueDate: Date) => {
+  const updateTaskDetails = async (id: string, title: string, description: string, priority: TaskPriority, dueDate: Date, owner: string | null) => {
     try {
       const { error } = await supabase
         .from('tasks')
-        .update({ title, description, priority, due_date: dueDate.toISOString() })
+        .update({ 
+          title, 
+          description, 
+          priority, 
+          due_date: dueDate.toISOString(),
+          owner 
+        })
         .eq('id', parseInt(id));
   
       if (error) throw error;
@@ -188,7 +193,7 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
           ...column,
           tasks: column.tasks.map(task => {
             if (task.id === id) {
-              return { ...task, title, description, priority, dueDate };
+              return { ...task, title, description, priority, dueDate, owner };
             }
             return task;
           }),
