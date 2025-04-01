@@ -8,11 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
+import { AlertCircle } from 'lucide-react';
 
 const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -87,6 +89,7 @@ const Auth = () => {
   };
 
   const handleGoogleSignIn = async () => {
+    setGoogleError(null);
     try {
       console.log("Starting Google sign-in process...");
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -98,6 +101,12 @@ const Auth = () => {
       
       if (error) {
         console.error("Google sign-in error:", error);
+        
+        // Check for provider not enabled error
+        if (error.message.includes("provider is not enabled")) {
+          setGoogleError("The Google provider is not enabled in your Supabase project. Please enable it in your Supabase dashboard under Authentication > Providers > Google.");
+        }
+        
         throw error;
       }
       
@@ -106,7 +115,7 @@ const Auth = () => {
       console.error("Google sign-in exception:", error);
       toast({
         title: "Google Sign-In Error",
-        description: `Error: ${error.message || "Could not connect to Google"}. Make sure Google provider is enabled in Supabase.`,
+        description: error.message || "Could not connect to Google. Make sure Google provider is enabled in Supabase.",
         variant: "destructive",
       });
     }
@@ -195,6 +204,13 @@ const Auth = () => {
               <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
             </div>
           </div>
+          
+          {googleError && (
+            <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4 text-sm flex gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
+              <p className="text-amber-800">{googleError}</p>
+            </div>
+          )}
           
           <Button 
             variant="outline" 
