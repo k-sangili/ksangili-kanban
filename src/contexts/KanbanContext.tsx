@@ -171,6 +171,9 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!user) return;
 
     try {
+      // Convert string ID to number for Supabase query
+      const numericId = parseInt(taskId, 10);
+      
       const { error } = await supabase
         .from('tasks')
         .update({
@@ -179,7 +182,7 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           status: updatedTask.status,
           priority: updatedTask.priority
         })
-        .eq('id', taskId);
+        .eq('id', numericId);
 
       if (error) {
         console.error('Error updating task:', error);
@@ -256,10 +259,13 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     }
 
     try {
+      // Convert string ID to number for Supabase query
+      const numericId = parseInt(taskId, 10);
+      
       const { error } = await supabase
         .from('tasks')
         .delete()
-        .eq('id', taskId);
+        .eq('id', numericId);
 
       if (error) {
         console.error('Error deleting task:', error);
@@ -319,10 +325,13 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     if (!movedTask) return;
 
     try {
+      // Convert string ID to number for Supabase query
+      const numericId = parseInt(taskId, 10);
+      
       const { error } = await supabase
         .from('tasks')
         .update({ status: newStatus })
-        .eq('id', taskId);
+        .eq('id', numericId);
 
       if (error) {
         console.error('Error moving task:', error);
