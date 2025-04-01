@@ -1,408 +1,255 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Task, TaskStatus, KanbanColumn } from '@/types/kanban';
-import { toast } from '@/components/ui/use-toast';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { Task, TaskStatus, TaskPriority, KanbanColumn } from '@/types/kanban';
+import { v4 as uuidv4 } from 'uuid';
+import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 
-interface KanbanContextType {
+type KanbanContextType = {
   columns: KanbanColumn[];
-  addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
-  updateTask: (taskId: string, updatedTask: Partial<Omit<Task, 'id'>>) => void;
-  deleteTask: (taskId: string) => void;
-  moveTask: (taskId: string, newStatus: TaskStatus) => void;
   loading: boolean;
-}
-
-const defaultColumns: KanbanColumn[] = [
-  {
-    id: 'backlog',
-    title: 'Backlog',
-    tasks: [],
-  },
-  {
-    id: 'todo',
-    title: 'To Do',
-    tasks: [],
-  },
-  {
-    id: 'in-progress',
-    title: 'In Progress',
-    tasks: [],
-  },
-  {
-    id: 'done',
-    title: 'Done',
-    tasks: [],
-  },
-];
+  addTask: (title: string, description: string, status: TaskStatus, priority: TaskPriority, dueDate: Date) => Promise<void>;
+  updateTaskStatus: (id: string, status: TaskStatus) => Promise<void>;
+  updateTaskDetails: (id: string, title: string, description: string, priority: TaskPriority, dueDate: Date) => Promise<void>;
+  deleteTask: (id: string) => Promise<void>;
+};
 
 const KanbanContext = createContext<KanbanContextType | undefined>(undefined);
 
-export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [columns, setColumns] = useState<KanbanColumn[]>(defaultColumns);
-  const [loading, setLoading] = useState(true);
+// When mapping tasks from Supabase, ensure we handle the due_date field properly
+const mapTaskFromSupabase = (task: any): Task => {
+  return {
+    id: task.id.toString(),
+    title: task.title,
+    description: task.description,
+    status: task.status as TaskStatus,
+    priority: task.priority as TaskPriority,
+    createdAt: new Date(task.created_at),
+    owner: task.owner || null,
+    dueDate: task.due_date ? new Date(task.due_date) : new Date(Date.now() + 86400000), // Default to tomorrow if not set
+  };
+};
+
+export function KanbanProvider({ children }: { children: React.ReactNode }) {
+  const [columns, setColumns] = useState<KanbanColumn[]>([
+    { id: 'backlog', title: 'Backlog', tasks: [] },
+    { id: 'todo', title: 'To Do', tasks: [] },
+    { id: 'in-progress', title: 'In Progress', tasks: [] },
+    { id: 'done', title: 'Done', tasks: [] },
+  ]);
+  const [loading, setLoading] = useState(false);
   const { user } = useAuth();
 
-  // Fetch tasks from Supabase when component mounts or user changes
   useEffect(() => {
-    const fetchTasks = async () => {
-      if (!user) {
-        setLoading(false);
-        // Reset columns to default empty state when no user is logged in
-        setColumns(defaultColumns.map(col => ({ ...col, tasks: [] })));
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const { data, error } = await supabase
-          .from('tasks')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('Error fetching tasks:', error);
-          toast({
-            title: 'Error fetching tasks',
-            description: error.message,
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        console.log('Fetched tasks from Supabase:', data);
-
-        // Transform the data to match our Task type
-        const fetchedTasks: Task[] = data.map((task: any) => ({
-          id: task.id.toString(),
-          title: task.title,
-          description: task.description,
-          status: task.status as TaskStatus,
-          priority: task.priority || 'medium', // Default to medium if not provided
-          createdAt: new Date(task.created_at),
-          owner: task.owner || null,
-          dueDate: task.due_date ? new Date(task.due_date) : new Date(Date.now() + 24 * 60 * 60 * 1000),
-        }));
-
-        // Create fresh columns with empty task arrays
-        const newColumns = defaultColumns.map(col => ({ ...col, tasks: [] }));
-        
-        // Now populate tasks into the appropriate columns
-        fetchedTasks.forEach(task => {
-          const column = newColumns.find(c => c.id === task.status);
-          if (column) {
-            column.tasks.push(task);
-          }
-        });
-
-        setColumns(newColumns);
-      } catch (error) {
-        console.error('Unexpected error fetching tasks:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchTasks();
   }, [user]);
 
-  const addTask = async (task: Omit<Task, 'id' | 'createdAt'>) => {
+  const fetchTasks = async () => {
     if (!user) {
-      toast({
-        title: 'Authentication required',
-        description: 'You must be logged in to add tasks',
-        variant: 'destructive',
-      });
+      console.log('No user found, skipping task fetch');
+      setColumns([
+        { id: 'backlog', title: 'Backlog', tasks: [] },
+        { id: 'todo', title: 'To Do', tasks: [] },
+        { id: 'in-progress', title: 'In Progress', tasks: [] },
+        { id: 'done', title: 'Done', tasks: [] },
+      ]);
       return;
     }
 
+    setLoading(true);
     try {
+      console.log('Fetching tasks for user:', user.id);
       const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      console.log('Tasks fetched:', data?.length || 0);
+      
+      // Group tasks by status
+      const backlogTasks = data
+        ?.filter(task => task.status === 'backlog')
+        .map(mapTaskFromSupabase) || [];
+      
+      const todoTasks = data
+        ?.filter(task => task.status === 'todo')
+        .map(mapTaskFromSupabase) || [];
+      
+      const inProgressTasks = data
+        ?.filter(task => task.status === 'in-progress')
+        .map(mapTaskFromSupabase) || [];
+      
+      const doneTasks = data
+        ?.filter(task => task.status === 'done')
+        .map(mapTaskFromSupabase) || [];
+      
+      setColumns([
+        { id: 'backlog', title: 'Backlog', tasks: backlogTasks },
+        { id: 'todo', title: 'To Do', tasks: todoTasks },
+        { id: 'in-progress', title: 'In Progress', tasks: inProgressTasks },
+        { id: 'done', title: 'Done', tasks: doneTasks },
+      ]);
+    } catch (error: any) {
+      console.error('Error fetching tasks:', error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addTask = async (title: string, description: string, status: TaskStatus, priority: TaskPriority, dueDate: Date) => {
+    if (!user) {
+      console.error('Cannot add task: No user logged in.');
+      return;
+    }
+
+    const newTask = {
+      id: uuidv4(),
+      title,
+      description,
+      status,
+      priority,
+      created_at: new Date(),
+      user_id: user.id,
+      due_date: dueDate,
+    };
+
+    try {
+      const { error } = await supabase
         .from('tasks')
         .insert([
           {
-            title: task.title,
-            description: task.description,
-            status: task.status,
-            priority: task.priority,
-            owner: task.owner || null,
-            due_date: task.dueDate
+            id: newTask.id,
+            title: newTask.title,
+            description: newTask.description,
+            status: newTask.status,
+            priority: newTask.priority,
+            created_at: newTask.created_at.toISOString(),
+            user_id: newTask.user_id,
+            due_date: newTask.due_date.toISOString(),
+          },
+        ]);
+
+      if (error) throw error;
+
+      setColumns(prevColumns => {
+        const updatedColumns = prevColumns.map(column => {
+          if (column.id === status) {
+            return { ...column, tasks: [...column.tasks, {
+              id: newTask.id,
+              title: newTask.title,
+              description: newTask.description,
+              status: newTask.status,
+              priority: newTask.priority,
+              createdAt: newTask.created_at,
+              owner: user.id,
+              dueDate: newTask.due_date,
+            }] };
+          } else {
+            return column;
           }
-        ])
-        .select();
-
-      if (error) {
-        console.error('Error adding task:', error);
-        toast({
-          title: 'Error adding task',
-          description: error.message,
-          variant: 'destructive',
         });
-        return;
-      }
-
-      const newTask: Task = {
-        id: data[0].id.toString(),
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        createdAt: new Date(data[0].created_at),
-        owner: task.owner || null,
-        dueDate: new Date(data[0].due_date),
-      };
-
-      setColumns(prev => {
-        return prev.map(column => {
-          if (column.id === task.status) {
-            // Add at the beginning of the array to show newest first
-            return {
-              ...column,
-              tasks: [newTask, ...column.tasks],
-            };
-          }
-          return column;
-        });
+        return updatedColumns;
       });
-
-      toast({
-        title: 'Task added',
-        description: `"${task.title}" has been added to ${task.status}`,
-      });
-    } catch (error) {
-      console.error('Unexpected error adding task:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to add task. Please try again.',
-        variant: 'destructive',
-      });
+    } catch (error: any) {
+      console.error('Error adding task:', error.message);
     }
   };
 
-  const updateTask = async (taskId: string, updatedTask: Partial<Omit<Task, 'id'>>) => {
-    if (!user) return;
-
+  const updateTaskStatus = async (id: string, newStatus: TaskStatus) => {
     try {
-      // Convert string ID to number for Supabase query
-      const numericId = parseInt(taskId, 10);
-      
-      const updateData: any = {};
-      if (updatedTask.title !== undefined) updateData.title = updatedTask.title;
-      if (updatedTask.description !== undefined) updateData.description = updatedTask.description;
-      if (updatedTask.status !== undefined) updateData.status = updatedTask.status;
-      if (updatedTask.priority !== undefined) updateData.priority = updatedTask.priority;
-      if (updatedTask.owner !== undefined) updateData.owner = updatedTask.owner;
-      if (updatedTask.dueDate !== undefined) updateData.due_date = updatedTask.dueDate;
-      
-      const { error } = await supabase
-        .from('tasks')
-        .update(updateData)
-        .eq('id', numericId);
-
-      if (error) {
-        console.error('Error updating task:', error);
-        toast({
-          title: 'Error updating task',
-          description: error.message,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      setColumns(prev => {
-        return prev.map(column => {
-          const taskIndex = column.tasks.findIndex(t => t.id === taskId);
-          
-          if (taskIndex >= 0) {
-            const tasks = [...column.tasks];
-            tasks[taskIndex] = {
-              ...tasks[taskIndex],
-              ...updatedTask,
-            };
-            
-            // If status changed, move the task to the new column
-            if (updatedTask.status && updatedTask.status !== column.id) {
-              // Remove from current column
-              const taskToMove = tasks.splice(taskIndex, 1)[0];
-              
-              // Find new column and update it separately
-              const newColumn = prev.find(c => c.id === updatedTask.status);
-              if (newColumn) {
-                newColumn.tasks.push({
-                  ...taskToMove,
-                  ...updatedTask,
-                });
-              }
-              
-              return {
-                ...column,
-                tasks,
-              };
-            }
-            
-            return {
-              ...column,
-              tasks,
-            };
-          }
-          
-          return column;
-        });
-      });
-
-      toast({
-        title: 'Task updated',
-        description: 'The task has been updated successfully',
-      });
-    } catch (error) {
-      console.error('Unexpected error updating task:', error);
-    }
-  };
-
-  const deleteTask = async (taskId: string) => {
-    if (!user) return;
-    
-    let deletedTaskTitle = '';
-    
-    // Find the task title before deleting
-    for (const column of columns) {
-      const task = column.tasks.find(t => t.id === taskId);
-      if (task) {
-        deletedTaskTitle = task.title;
-        break;
-      }
-    }
-
-    try {
-      // Convert string ID to number for Supabase query
-      const numericId = parseInt(taskId, 10);
-      
-      const { error } = await supabase
-        .from('tasks')
-        .delete()
-        .eq('id', numericId);
-
-      if (error) {
-        console.error('Error deleting task:', error);
-        toast({
-          title: 'Error deleting task',
-          description: error.message,
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      setColumns(prev => {
-        return prev.map(column => {
-          const taskIndex = column.tasks.findIndex(t => t.id === taskId);
-          
-          if (taskIndex >= 0) {
-            const tasks = [...column.tasks];
-            tasks.splice(taskIndex, 1);
-            
-            return {
-              ...column,
-              tasks,
-            };
-          }
-          
-          return column;
-        });
-      });
-
-      if (deletedTaskTitle) {
-        toast({
-          title: 'Task deleted',
-          description: `"${deletedTaskTitle}" has been deleted`,
-        });
-      }
-    } catch (error) {
-      console.error('Unexpected error deleting task:', error);
-    }
-  };
-
-  const moveTask = async (taskId: string, newStatus: TaskStatus) => {
-    if (!user) return;
-    
-    let movedTask: Task | null = null;
-    let sourceColumn = '';
-    
-    // Find the task before updating
-    for (const column of columns) {
-      const task = column.tasks.find(t => t.id === taskId);
-      if (task) {
-        movedTask = task;
-        sourceColumn = column.title;
-        break;
-      }
-    }
-
-    if (!movedTask) return;
-
-    try {
-      // Convert string ID to number for Supabase query
-      const numericId = parseInt(taskId, 10);
-      
       const { error } = await supabase
         .from('tasks')
         .update({ status: newStatus })
-        .eq('id', numericId);
+        .eq('id', id);
 
-      if (error) {
-        console.error('Error moving task:', error);
-        toast({
-          title: 'Error moving task',
-          description: error.message,
-          variant: 'destructive',
+      if (error) throw error;
+
+      setColumns(prevColumns => {
+        const updatedColumns = prevColumns.map(column => ({
+          ...column,
+          tasks: column.tasks.filter(task => task.id !== id),
+        })).map(column => {
+          if (column.id === newStatus) {
+            const taskToUpdate = prevColumns
+              .flatMap(col => col.tasks)
+              .find(task => task.id === id);
+            
+            if (taskToUpdate) {
+              return { ...column, tasks: [...column.tasks, { ...taskToUpdate, status: newStatus }] };
+            }
+          }
+          return column;
         });
-        return;
-      }
-
-      setColumns(prev => {
-        let updatedColumns = [...prev];
-        
-        // Find and remove the task from its current column
-        for (const column of updatedColumns) {
-          const taskIndex = column.tasks.findIndex(t => t.id === taskId);
-          
-          if (taskIndex >= 0) {
-            movedTask = { ...column.tasks[taskIndex], status: newStatus };
-            column.tasks = column.tasks.filter(t => t.id !== taskId);
-            break;
-          }
-        }
-        
-        // Add the task to the new column
-        if (movedTask) {
-          const targetColumn = updatedColumns.find(c => c.id === newStatus);
-          if (targetColumn) {
-            targetColumn.tasks.push(movedTask);
-          }
-        }
-        
         return updatedColumns;
       });
-
-      if (movedTask) {
-        const targetColumn = columns.find(c => c.id === newStatus)?.title;
-        
-        toast({
-          title: 'Task moved',
-          description: `"${movedTask.title}" moved from ${sourceColumn} to ${targetColumn}`,
-        });
-      }
-    } catch (error) {
-      console.error('Unexpected error moving task:', error);
+    } catch (error: any) {
+      console.error('Error updating task status:', error.message);
     }
   };
 
+  const updateTaskDetails = async (id: string, title: string, description: string, priority: TaskPriority, dueDate: Date) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ title, description, priority, due_date: dueDate.toISOString() })
+        .eq('id', id);
+  
+      if (error) throw error;
+  
+      setColumns(prevColumns => {
+        const updatedColumns = prevColumns.map(column => ({
+          ...column,
+          tasks: column.tasks.map(task => {
+            if (task.id === id) {
+              return { ...task, title, description, priority, dueDate };
+            }
+            return task;
+          }),
+        }));
+        return updatedColumns;
+      });
+    } catch (error: any) {
+      console.error('Error updating task details:', error.message);
+    }
+  };
+
+  const deleteTask = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      setColumns(prevColumns => {
+        const updatedColumns = prevColumns.map(column => ({
+          ...column,
+          tasks: column.tasks.filter(task => task.id !== id),
+        }));
+        return updatedColumns;
+      });
+    } catch (error: any) {
+      console.error('Error deleting task:', error.message);
+    }
+  };
+
+  const value = {
+    columns,
+    loading,
+    addTask,
+    updateTaskStatus,
+    updateTaskDetails,
+    deleteTask,
+  };
+
   return (
-    <KanbanContext.Provider value={{ columns, addTask, updateTask, deleteTask, moveTask, loading }}>
+    <KanbanContext.Provider value={value}>
       {children}
     </KanbanContext.Provider>
   );
-};
+}
 
 export const useKanban = () => {
   const context = useContext(KanbanContext);
