@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Loader2 } from 'lucide-react';
 
 const KanbanBoard: React.FC = () => {
-  const { columns, addTask, updateTask, loading } = useKanban();
+  const { columns, addTask, updateTaskDetails, loading } = useKanban();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
   const [currentTask, setCurrentTask] = useState<Partial<Task>>({
@@ -28,12 +28,24 @@ const KanbanBoard: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleSubmitTask = (values: Omit<Task, 'id' | 'createdAt'>) => {
+  const handleSubmitTask = (task: Task) => {
     if (dialogMode === 'add') {
-      addTask(values);
+      addTask(
+        task.title,
+        task.description,
+        task.status,
+        task.priority,
+        task.dueDate
+      );
     } else {
       if (currentTask.id) {
-        updateTask(currentTask.id, values);
+        updateTaskDetails(
+          currentTask.id,
+          task.title,
+          task.description,
+          task.priority,
+          task.dueDate
+        );
       }
     }
   };

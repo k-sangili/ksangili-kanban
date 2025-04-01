@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect } from 'react';
 import { Task, TaskStatus, TaskPriority, KanbanColumn } from '@/types/kanban';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,6 +12,7 @@ type KanbanContextType = {
   updateTaskStatus: (id: string, status: TaskStatus) => Promise<void>;
   updateTaskDetails: (id: string, title: string, description: string, priority: TaskPriority, dueDate: Date) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  moveTask: (id: string, newStatus: TaskStatus) => Promise<void>;
 };
 
 const KanbanContext = createContext<KanbanContextType | undefined>(undefined);
@@ -18,7 +20,7 @@ const KanbanContext = createContext<KanbanContextType | undefined>(undefined);
 // When mapping tasks from Supabase, ensure we handle the due_date field properly
 const mapTaskFromSupabase = (task: any): Task => {
   return {
-    id: task.id.toString(),
+    id: task.id,
     title: task.title,
     description: task.description,
     status: task.status as TaskStatus,
@@ -127,6 +129,7 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
             created_at: newTask.created_at.toISOString(),
             user_id: newTask.user_id,
             due_date: newTask.due_date.toISOString(),
+            owner: user.email || user.id
           },
         ]);
 
@@ -142,7 +145,7 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
               status: newTask.status,
               priority: newTask.priority,
               createdAt: newTask.created_at,
-              owner: user.id,
+              owner: user.email || user.id,
               dueDate: newTask.due_date,
             }] };
           } else {
@@ -234,6 +237,12 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
       console.error('Error deleting task:', error.message);
     }
   };
+  
+  // Add the moveTask function that was missing
+  const moveTask = async (id: string, newStatus: TaskStatus) => {
+    // This is essentially an alias for updateTaskStatus for drag and drop functionality
+    await updateTaskStatus(id, newStatus);
+  };
 
   const value = {
     columns,
@@ -242,6 +251,7 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
     updateTaskStatus,
     updateTaskDetails,
     deleteTask,
+    moveTask,
   };
 
   return (

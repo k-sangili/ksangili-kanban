@@ -33,7 +33,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     const taskId = e.dataTransfer.getData('taskId');
-    moveTask(taskId, column.id);
+    moveTask(taskId, column.id as TaskStatus);
   };
 
   return (
@@ -42,7 +42,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <div className={`column-header flex items-center justify-between p-2 mb-2 rounded-md ${statusColors[column.id]}`}>
+      <div className={`column-header flex items-center justify-between p-2 mb-2 rounded-md ${statusColors[column.id as TaskStatus]}`}>
         <h2 className="font-medium">
           {column.title} <span className="text-sm ml-1 text-gray-600">({column.tasks.length})</span>
         </h2>
@@ -50,7 +50,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
           size="sm" 
           variant="ghost" 
           className="h-8 w-8 p-0"
-          onClick={() => onAddTask(column.id)}
+          onClick={() => onAddTask(column.id as TaskStatus)}
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -61,7 +61,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
           <TaskCard 
             key={task.id} 
             task={task}
-            onEdit={onEditTask}
+            onEdit={() => onEditTask(task)}
           />
         ))}
       </div>
