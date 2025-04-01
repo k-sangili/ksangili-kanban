@@ -29,12 +29,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 const taskFormSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters' }),
   description: z.string().min(5, { message: 'Description must be at least 5 characters' }),
   status: z.enum(['backlog', 'todo', 'in-progress', 'done'] as const),
   priority: z.enum(['low', 'medium', 'high'] as const),
+  owner: z.string().optional(),
+  dueDate: z.date({
+    required_error: "Due date is required",
+  }),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
@@ -56,6 +65,8 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
     description: '',
     status: 'todo' as TaskStatus,
     priority: 'medium' as TaskPriority,
+    owner: '',
+    dueDate: new Date(Date.now() + 24 * 60 * 60 * 1000), // Tomorrow
   },
   mode,
 }) => {
@@ -95,6 +106,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 </FormItem>
               )}
             />
+            
             <FormField
               control={form.control}
               name="description"
@@ -112,6 +124,61 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                 </FormItem>
               )}
             />
+            
+            <FormField
+              control={form.control}
+              name="owner"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Owner</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Task owner" {...field} value={field.value || ''} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="dueDate"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Due Date</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full pl-3 text-left font-normal",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          {field.value ? (
+                            format(field.value, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}

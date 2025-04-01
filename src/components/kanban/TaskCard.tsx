@@ -3,7 +3,7 @@ import React from 'react';
 import { Task, TaskPriority } from '@/types/kanban';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Edit, Trash2, Calendar, User } from 'lucide-react';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { useKanban } from '@/contexts/KanbanContext';
+import { format } from 'date-fns';
 
 interface TaskCardProps {
   task: Task;
@@ -25,11 +26,14 @@ const priorityColors: Record<TaskPriority, string> = {
 
 const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
   const { deleteTask } = useKanban();
-  const formattedDate = new Date(task.createdAt).toLocaleDateString();
+  const createdDate = new Date(task.createdAt).toLocaleDateString();
+  const dueDate = task.dueDate ? format(new Date(task.dueDate), 'MMM d, yyyy') : 'No due date';
   
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData('taskId', task.id);
   };
+
+  const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
 
   return (
     <Card 
@@ -60,11 +64,26 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
       </CardHeader>
       <CardContent className="p-3 pt-2">
         <p className="text-sm text-gray-500 mb-2 line-clamp-2">{task.description}</p>
+        
+        {task.owner && (
+          <div className="flex items-center text-xs text-gray-500 mb-2">
+            <User className="h-3 w-3 mr-1" />
+            <span className="truncate">{task.owner}</span>
+          </div>
+        )}
+        
+        <div className="flex items-center text-xs mb-2">
+          <Calendar className="h-3 w-3 mr-1" />
+          <span className={isOverdue ? "text-red-600 font-medium" : "text-gray-500"}>
+            {dueDate} {isOverdue && "(Overdue)"}
+          </span>
+        </div>
+        
         <div className="flex justify-between items-center">
           <Badge variant="outline" className={priorityColors[task.priority]}>
             {task.priority}
           </Badge>
-          <span className="text-xs text-gray-400">{formattedDate}</span>
+          <span className="text-xs text-gray-400">{createdDate}</span>
         </div>
       </CardContent>
     </Card>

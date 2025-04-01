@@ -81,6 +81,8 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
           status: task.status as TaskStatus,
           priority: task.priority || 'medium', // Default to medium if not provided
           createdAt: new Date(task.created_at),
+          owner: task.owner || null,
+          dueDate: task.due_date ? new Date(task.due_date) : new Date(Date.now() + 24 * 60 * 60 * 1000),
         }));
 
         // Create fresh columns with empty task arrays
@@ -123,7 +125,9 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             title: task.title,
             description: task.description,
             status: task.status,
-            priority: task.priority
+            priority: task.priority,
+            owner: task.owner || null,
+            due_date: task.dueDate
           }
         ])
         .select();
@@ -145,6 +149,8 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         status: task.status,
         priority: task.priority,
         createdAt: new Date(data[0].created_at),
+        owner: task.owner || null,
+        dueDate: new Date(data[0].due_date),
       };
 
       setColumns(prev => {
@@ -181,14 +187,17 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       // Convert string ID to number for Supabase query
       const numericId = parseInt(taskId, 10);
       
+      const updateData: any = {};
+      if (updatedTask.title !== undefined) updateData.title = updatedTask.title;
+      if (updatedTask.description !== undefined) updateData.description = updatedTask.description;
+      if (updatedTask.status !== undefined) updateData.status = updatedTask.status;
+      if (updatedTask.priority !== undefined) updateData.priority = updatedTask.priority;
+      if (updatedTask.owner !== undefined) updateData.owner = updatedTask.owner;
+      if (updatedTask.dueDate !== undefined) updateData.due_date = updatedTask.dueDate;
+      
       const { error } = await supabase
         .from('tasks')
-        .update({
-          title: updatedTask.title,
-          description: updatedTask.description,
-          status: updatedTask.status,
-          priority: updatedTask.priority
-        })
+        .update(updateData)
         .eq('id', numericId);
 
       if (error) {

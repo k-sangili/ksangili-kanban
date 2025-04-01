@@ -10,6 +10,8 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   createdAt: Date;
+  owner: string | null;
+  dueDate: Date;
 }
 
 export interface KanbanColumn {

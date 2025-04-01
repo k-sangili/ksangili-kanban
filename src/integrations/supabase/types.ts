@@ -13,7 +13,9 @@ export type Database = {
         Row: {
           created_at: string
           description: string
+          due_date: string
           id: number
+          owner: string | null
           priority: string
           status: string
           title: string
@@ -21,7 +23,9 @@ export type Database = {
         Insert: {
           created_at?: string
           description: string
+          due_date?: string
           id?: number
+          owner?: string | null
           priority: string
           status: string
           title: string
@@ -29,7 +33,9 @@ export type Database = {
         Update: {
           created_at?: string
           description?: string
+          due_date?: string
           id?: number
+          owner?: string | null
           priority?: string
           status?: string
           title?: string
