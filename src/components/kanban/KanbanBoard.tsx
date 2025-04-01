@@ -5,10 +5,10 @@ import TaskDialog from './TaskDialog';
 import { useKanban } from '@/contexts/KanbanContext';
 import { Task, TaskStatus } from '@/types/kanban';
 import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Loader2 } from 'lucide-react';
 
 const KanbanBoard: React.FC = () => {
-  const { columns, addTask, updateTask } = useKanban();
+  const { columns, addTask, updateTask, loading } = useKanban();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
   const [currentTask, setCurrentTask] = useState<Partial<Task>>({
@@ -37,6 +37,15 @@ const KanbanBoard: React.FC = () => {
       }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-lg">Loading tasks...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="p-4">

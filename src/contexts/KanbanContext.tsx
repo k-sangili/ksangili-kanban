@@ -2,6 +2,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Task, TaskStatus, KanbanColumn } from '@/types/kanban';
 import { toast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface KanbanContextType {
   columns: KanbanColumn[];
@@ -9,6 +11,7 @@ interface KanbanContextType {
   updateTask: (taskId: string, updatedTask: Partial<Omit<Task, 'id'>>) => void;
   deleteTask: (taskId: string) => void;
   moveTask: (taskId: string, newStatus: TaskStatus) => void;
+  loading: boolean;
 }
 
 const defaultColumns: KanbanColumn[] = [
@@ -34,138 +37,189 @@ const defaultColumns: KanbanColumn[] = [
   },
 ];
 
-// Sample initial tasks
-const initialTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Research competitors',
-    description: 'Look into what similar products are doing',
-    status: 'todo',
-    priority: 'medium',
-    createdAt: new Date(),
-  },
-  {
-    id: '2',
-    title: 'Design homepage',
-    description: 'Create wireframes for the homepage',
-    status: 'in-progress',
-    priority: 'high',
-    createdAt: new Date(),
-  },
-  {
-    id: '3',
-    title: 'Set up analytics',
-    description: 'Implement Google Analytics',
-    status: 'done',
-    priority: 'low',
-    createdAt: new Date(),
-  },
-  {
-    id: '4',
-    title: 'Brainstorm feature ideas',
-    description: 'Come up with new features for the next sprint',
-    status: 'backlog',
-    priority: 'medium',
-    createdAt: new Date(),
-  },
-];
-
-// Initialize columns with sample tasks
-const initializeColumns = (): KanbanColumn[] => {
-  const columns = [...defaultColumns];
-  
-  initialTasks.forEach(task => {
-    const column = columns.find(c => c.id === task.status);
-    if (column) {
-      column.tasks.push(task);
-    }
-  });
-  
-  return columns;
-};
-
 const KanbanContext = createContext<KanbanContextType | undefined>(undefined);
 
 export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [columns, setColumns] = useState<KanbanColumn[]>(initializeColumns());
+  const [columns, setColumns] = useState<KanbanColumn[]>(defaultColumns);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
 
-  // Save to localStorage whenever columns change
+  // Fetch tasks from Supabase when component mounts or user changes
   useEffect(() => {
-    try {
-      localStorage.setItem('kanbanColumns', JSON.stringify(columns));
-    } catch (error) {
-      console.error('Failed to save kanban state to localStorage', error);
-    }
-  }, [columns]);
-
-  // Load from localStorage on initial render
-  useEffect(() => {
-    try {
-      const savedColumns = localStorage.getItem('kanbanColumns');
-      if (savedColumns) {
-        // Parse dates correctly
-        const parsed = JSON.parse(savedColumns, (key, value) => {
-          if (key === 'createdAt') {
-            return new Date(value);
-          }
-          return value;
-        });
-        setColumns(parsed);
+    const fetchTasks = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error('Failed to load kanban state from localStorage', error);
-    }
-  }, []);
 
-  const addTask = (task: Omit<Task, 'id' | 'createdAt'>) => {
-    const newTask: Task = {
-      ...task,
-      id: Date.now().toString(),
-      createdAt: new Date(),
+      try {
+        setLoading(true);
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching tasks:', error);
+          toast({
+            title: 'Error fetching tasks',
+            description: error.message,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        // Transform the data to match our Task type
+        const fetchedTasks: Task[] = data.map((task: any) => ({
+          id: task.id.toString(),
+          title: task.title,
+          description: task.description,
+          status: task.status as TaskStatus,
+          priority: task.priority || 'medium', // Default to medium if not provided
+          createdAt: new Date(task.created_at),
+        }));
+
+        // Organize tasks into columns
+        const newColumns = [...defaultColumns];
+        fetchedTasks.forEach(task => {
+          const column = newColumns.find(c => c.id === task.status);
+          if (column) {
+            column.tasks.push(task);
+          }
+        });
+
+        setColumns(newColumns);
+      } catch (error) {
+        console.error('Unexpected error fetching tasks:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setColumns(prev => {
-      return prev.map(column => {
-        if (column.id === task.status) {
-          return {
-            ...column,
-            tasks: [...column.tasks, newTask],
-          };
-        }
-        return column;
-      });
-    });
+    fetchTasks();
+  }, [user]);
 
-    toast({
-      title: 'Task added',
-      description: `"${task.title}" has been added to ${task.status}`,
-    });
+  const addTask = async (task: Omit<Task, 'id' | 'createdAt'>) => {
+    if (!user) {
+      toast({
+        title: 'Authentication required',
+        description: 'You must be logged in to add tasks',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([
+          {
+            title: task.title,
+            description: task.description,
+            status: task.status,
+            priority: task.priority
+          }
+        ])
+        .select();
+
+      if (error) {
+        console.error('Error adding task:', error);
+        toast({
+          title: 'Error adding task',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const newTask: Task = {
+        id: data[0].id.toString(),
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        createdAt: new Date(data[0].created_at),
+      };
+
+      setColumns(prev => {
+        return prev.map(column => {
+          if (column.id === task.status) {
+            return {
+              ...column,
+              tasks: [newTask, ...column.tasks],
+            };
+          }
+          return column;
+        });
+      });
+
+      toast({
+        title: 'Task added',
+        description: `"${task.title}" has been added to ${task.status}`,
+      });
+    } catch (error) {
+      console.error('Unexpected error adding task:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to add task. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
-  const updateTask = (taskId: string, updatedTask: Partial<Omit<Task, 'id'>>) => {
-    setColumns(prev => {
-      return prev.map(column => {
-        const taskIndex = column.tasks.findIndex(t => t.id === taskId);
-        
-        if (taskIndex >= 0) {
-          const tasks = [...column.tasks];
-          tasks[taskIndex] = {
-            ...tasks[taskIndex],
-            ...updatedTask,
-          };
+  const updateTask = async (taskId: string, updatedTask: Partial<Omit<Task, 'id'>>) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({
+          title: updatedTask.title,
+          description: updatedTask.description,
+          status: updatedTask.status,
+          priority: updatedTask.priority
+        })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error updating task:', error);
+        toast({
+          title: 'Error updating task',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setColumns(prev => {
+        return prev.map(column => {
+          const taskIndex = column.tasks.findIndex(t => t.id === taskId);
           
-          // If status changed, move the task to the new column
-          if (updatedTask.status && updatedTask.status !== column.id) {
-            // Remove from current column
-            const taskToMove = tasks.splice(taskIndex, 1)[0];
+          if (taskIndex >= 0) {
+            const tasks = [...column.tasks];
+            tasks[taskIndex] = {
+              ...tasks[taskIndex],
+              ...updatedTask,
+            };
             
-            // Find new column and update it separately
-            const newColumn = prev.find(c => c.id === updatedTask.status);
-            if (newColumn) {
-              newColumn.tasks.push({
-                ...taskToMove,
-                ...updatedTask,
-              });
+            // If status changed, move the task to the new column
+            if (updatedTask.status && updatedTask.status !== column.id) {
+              // Remove from current column
+              const taskToMove = tasks.splice(taskIndex, 1)[0];
+              
+              // Find new column and update it separately
+              const newColumn = prev.find(c => c.id === updatedTask.status);
+              if (newColumn) {
+                newColumn.tasks.push({
+                  ...taskToMove,
+                  ...updatedTask,
+                });
+              }
+              
+              return {
+                ...column,
+                tasks,
+              };
             }
             
             return {
@@ -174,94 +228,152 @@ export const KanbanProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             };
           }
           
-          return {
-            ...column,
-            tasks,
-          };
-        }
-        
-        return column;
+          return column;
+        });
       });
-    });
 
-    toast({
-      title: 'Task updated',
-      description: 'The task has been updated successfully',
-    });
-  };
-
-  const deleteTask = (taskId: string) => {
-    let deletedTaskTitle = '';
-    
-    setColumns(prev => {
-      return prev.map(column => {
-        const taskIndex = column.tasks.findIndex(t => t.id === taskId);
-        
-        if (taskIndex >= 0) {
-          deletedTaskTitle = column.tasks[taskIndex].title;
-          const tasks = [...column.tasks];
-          tasks.splice(taskIndex, 1);
-          
-          return {
-            ...column,
-            tasks,
-          };
-        }
-        
-        return column;
-      });
-    });
-
-    if (deletedTaskTitle) {
       toast({
-        title: 'Task deleted',
-        description: `"${deletedTaskTitle}" has been deleted`,
+        title: 'Task updated',
+        description: 'The task has been updated successfully',
       });
+    } catch (error) {
+      console.error('Unexpected error updating task:', error);
     }
   };
 
-  const moveTask = (taskId: string, newStatus: TaskStatus) => {
+  const deleteTask = async (taskId: string) => {
+    if (!user) return;
+    
+    let deletedTaskTitle = '';
+    
+    // Find the task title before deleting
+    for (const column of columns) {
+      const task = column.tasks.find(t => t.id === taskId);
+      if (task) {
+        deletedTaskTitle = task.title;
+        break;
+      }
+    }
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error deleting task:', error);
+        toast({
+          title: 'Error deleting task',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setColumns(prev => {
+        return prev.map(column => {
+          const taskIndex = column.tasks.findIndex(t => t.id === taskId);
+          
+          if (taskIndex >= 0) {
+            const tasks = [...column.tasks];
+            tasks.splice(taskIndex, 1);
+            
+            return {
+              ...column,
+              tasks,
+            };
+          }
+          
+          return column;
+        });
+      });
+
+      if (deletedTaskTitle) {
+        toast({
+          title: 'Task deleted',
+          description: `"${deletedTaskTitle}" has been deleted`,
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error deleting task:', error);
+    }
+  };
+
+  const moveTask = async (taskId: string, newStatus: TaskStatus) => {
+    if (!user) return;
+    
     let movedTask: Task | null = null;
     let sourceColumn = '';
     
-    setColumns(prev => {
-      let updatedColumns = [...prev];
-      
-      // Find and remove the task from its current column
-      for (const column of updatedColumns) {
-        const taskIndex = column.tasks.findIndex(t => t.id === taskId);
-        
-        if (taskIndex >= 0) {
-          movedTask = { ...column.tasks[taskIndex], status: newStatus };
-          sourceColumn = column.title;
-          column.tasks = column.tasks.filter(t => t.id !== taskId);
-          break;
-        }
+    // Find the task before updating
+    for (const column of columns) {
+      const task = column.tasks.find(t => t.id === taskId);
+      if (task) {
+        movedTask = task;
+        sourceColumn = column.title;
+        break;
       }
-      
-      // Add the task to the new column
-      if (movedTask) {
-        const targetColumn = updatedColumns.find(c => c.id === newStatus);
-        if (targetColumn) {
-          targetColumn.tasks.push(movedTask);
-        }
-      }
-      
-      return updatedColumns;
-    });
+    }
 
-    if (movedTask) {
-      const targetColumn = columns.find(c => c.id === newStatus)?.title;
-      
-      toast({
-        title: 'Task moved',
-        description: `"${movedTask.title}" moved from ${sourceColumn} to ${targetColumn}`,
+    if (!movedTask) return;
+
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: newStatus })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error moving task:', error);
+        toast({
+          title: 'Error moving task',
+          description: error.message,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      setColumns(prev => {
+        let updatedColumns = [...prev];
+        
+        // Find and remove the task from its current column
+        for (const column of updatedColumns) {
+          const taskIndex = column.tasks.findIndex(t => t.id === taskId);
+          
+          if (taskIndex >= 0) {
+            movedTask = { ...column.tasks[taskIndex], status: newStatus };
+            column.tasks = column.tasks.filter(t => t.id !== taskId);
+            break;
+          }
+        }
+        
+        // Add the task to the new column
+        if (movedTask) {
+          const targetColumn = updatedColumns.find(c => c.id === newStatus);
+          if (targetColumn) {
+            targetColumn.tasks.push(movedTask);
+          }
+        }
+        
+        return updatedColumns;
       });
+
+      if (movedTask) {
+        const targetColumn = columns.find(c => c.id === newStatus)?.title;
+        
+        toast({
+          title: 'Task moved',
+          description: `"${movedTask.title}" moved from ${sourceColumn} to ${targetColumn}`,
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error moving task:', error);
     }
   };
 
   return (
-    <KanbanContext.Provider value={{ columns, addTask, updateTask, deleteTask, moveTask }}>
+    <KanbanContext.Provider value={{ columns, addTask, updateTask, deleteTask, moveTask, loading }}>
       {children}
     </KanbanContext.Provider>
   );
