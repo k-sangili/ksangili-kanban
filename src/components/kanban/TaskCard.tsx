@@ -36,23 +36,23 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
 
   return (
     <Card 
-      className="task-card mb-3 shadow-sm hover:shadow-md transition-shadow"
+      className="task-card mb-3 shadow-sm hover:shadow-md transition-shadow pointer-events-auto"
       draggable
       onDragStart={handleDragStart}
     >
-      <CardHeader className="p-3 pb-0 flex flex-row items-start justify-between">
+      <CardHeader className="p-3 pb-0 flex flex-row items-start justify-between pointer-events-auto">
         <h3 className="font-medium text-sm">{task.title}</h3>
         <DropdownMenu>
-          <DropdownMenuTrigger className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-gray-100">
+          <DropdownMenuTrigger className="h-8 w-8 flex items-center justify-center rounded-full hover:bg-gray-100 pointer-events-auto">
             <MoreHorizontal className="h-4 w-4" />
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(task)}>
+          <DropdownMenuContent align="end" className="pointer-events-auto">
+            <DropdownMenuItem onClick={() => onEdit(task)} className="pointer-events-auto">
               <Edit className="mr-2 h-4 w-4" />
               <span>Edit</span>
             </DropdownMenuItem>
             <DropdownMenuItem 
-              className="text-red-600 focus:text-red-600" 
+              className="text-red-600 focus:text-red-600 pointer-events-auto" 
               onClick={() => deleteTask(task.id)}
             >
               <Trash2 className="mr-2 h-4 w-4" />
@@ -61,21 +61,21 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </CardHeader>
-      <CardContent className="p-3 pt-2">
+      <CardContent className="p-3 pt-2 pointer-events-auto">
         <p className="text-sm text-gray-500 mb-2 line-clamp-2">{task.description}</p>
         
         {task.owner && (
-          <div className="flex items-center text-xs text-gray-500 mb-2">
+          <div className="flex items-center text-xs text-gray-500 mb-2 pointer-events-auto">
             <User className="h-3 w-3 mr-1" />
             <span className="truncate">{task.owner}</span>
           </div>
         )}
         
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center pointer-events-auto">
           <Badge variant="outline" className={priorityColors[task.priority]}>
             {task.priority}
           </Badge>
-          <div className="flex items-center text-xs">
+          <div className="flex items-center text-xs pointer-events-auto">
             <Calendar className="h-3 w-3 mr-1" />
             <span className={isOverdue ? "text-red-600 font-medium" : "text-gray-500"}>
               {dueDate} {isOverdue && "(Overdue)"}

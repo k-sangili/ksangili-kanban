@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +17,6 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already logged in
     const checkUser = async () => {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
@@ -28,7 +26,6 @@ const Auth = () => {
     
     checkUser();
 
-    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (session) {
@@ -102,13 +99,11 @@ const Auth = () => {
       if (error) {
         console.error("Google sign-in error:", error);
         
-        // Check for specific error conditions
         if (error.message.includes("provider is not enabled")) {
           setGoogleError("The Google provider is not enabled in your Supabase project. Please enable it in your Supabase dashboard under Authentication > Providers > Google.");
         } else if (error.status === 403 || error.message.includes("403")) {
           setGoogleError("Received a 403 Forbidden error. This usually means your Google OAuth credentials (Client ID and Secret) are missing or incorrect in Supabase.");
         } else if (error.message.includes("redirect_uri_mismatch") || error.message.includes("400")) {
-          // Specific handler for redirect_uri_mismatch error
           const redirectUrl = window.location.origin;
           setGoogleError(`Error 400: redirect_uri_mismatch. The redirect URL in your Google OAuth configuration doesn't match the URL Supabase is using. Add this exact URL to your Google Cloud Console OAuth credentials as an authorized redirect URI: ${redirectUrl}`);
         }
@@ -120,7 +115,6 @@ const Auth = () => {
     } catch (error: any) {
       console.error("Google sign-in exception:", error);
       
-      // If we haven't set a specific error message above, use a generic one
       if (!googleError) {
         toast({
           title: "Google Sign-In Error",
@@ -132,23 +126,23 @@ const Auth = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-white to-gray-50 p-4">
-      <Card className="w-full max-w-md">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-white to-gray-50 p-4 pointer-events-auto">
+      <Card className="w-full max-w-md pointer-events-auto">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Kanban Board</CardTitle>
           <CardDescription className="text-center">
             Sign in or create an account to continue
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pointer-events-auto">
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-4 pointer-events-auto">
+              <TabsTrigger value="signin" className="pointer-events-auto">Sign In</TabsTrigger>
+              <TabsTrigger value="signup" className="pointer-events-auto">Sign Up</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="signin">
-              <form onSubmit={handleEmailSignIn} className="space-y-4">
+            <TabsContent value="signin" className="pointer-events-auto">
+              <form onSubmit={handleEmailSignIn} className="space-y-4 pointer-events-auto">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input 
@@ -170,14 +164,14 @@ const Auth = () => {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full pointer-events-auto" disabled={loading}>
                   {loading ? 'Signing in...' : 'Sign In'}
                 </Button>
               </form>
             </TabsContent>
             
-            <TabsContent value="signup">
-              <form onSubmit={handleEmailSignUp} className="space-y-4">
+            <TabsContent value="signup" className="pointer-events-auto">
+              <form onSubmit={handleEmailSignUp} className="space-y-4 pointer-events-auto">
                 <div className="space-y-2">
                   <Label htmlFor="email-signup">Email</Label>
                   <Input 
@@ -199,7 +193,7 @@ const Auth = () => {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full pointer-events-auto" disabled={loading}>
                   {loading ? 'Creating account...' : 'Sign Up'}
                 </Button>
               </form>
@@ -246,7 +240,7 @@ const Auth = () => {
           
           <Button 
             variant="outline" 
-            className="w-full" 
+            className="w-full pointer-events-auto" 
             onClick={handleGoogleSignIn}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" className="mr-2">
@@ -258,7 +252,7 @@ const Auth = () => {
             Sign in with Google
           </Button>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-2">
+        <CardFooter className="flex flex-col space-y-2 pointer-events-auto">
           <div className="text-xs text-center text-muted-foreground">
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </div>
