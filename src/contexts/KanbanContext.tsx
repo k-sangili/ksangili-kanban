@@ -105,30 +105,21 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const newTask = {
-      id: uuidv4(),
-      title,
-      description,
-      status,
-      priority,
-      created_at: new Date(),
-      user_id: user.id,
-      due_date: dueDate,
-    };
-
+    const taskId = uuidv4();
+    
     try {
       const { error } = await supabase
         .from('tasks')
         .insert([
           {
-            id: newTask.id,
-            title: newTask.title,
-            description: newTask.description,
-            status: newTask.status,
-            priority: newTask.priority,
-            created_at: newTask.created_at.toISOString(),
-            user_id: newTask.user_id,
-            due_date: newTask.due_date.toISOString(),
+            id: taskId,
+            title,
+            description,
+            status,
+            priority,
+            created_at: new Date().toISOString(),
+            user_id: user.id,
+            due_date: dueDate.toISOString(),
             owner: user.email || user.id
           },
         ]);
@@ -139,14 +130,14 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
         const updatedColumns = prevColumns.map(column => {
           if (column.id === status) {
             return { ...column, tasks: [...column.tasks, {
-              id: newTask.id,
-              title: newTask.title,
-              description: newTask.description,
-              status: newTask.status,
-              priority: newTask.priority,
-              createdAt: newTask.created_at,
+              id: taskId,
+              title,
+              description,
+              status,
+              priority,
+              createdAt: new Date(),
               owner: user.email || user.id,
-              dueDate: newTask.due_date,
+              dueDate,
             }] };
           } else {
             return column;
