@@ -30,21 +30,29 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
   const [fullName, setFullName] = useState(profile?.full_name || '');
 
   // Update state when profile changes
-  if (profile?.username !== username && !updating) {
+  if (profile?.username !== username && profile?.username !== null && !updating) {
     setUsername(profile?.username || '');
   }
   
-  if (profile?.full_name !== fullName && !updating) {
+  if (profile?.full_name !== fullName && profile?.full_name !== null && !updating) {
     setFullName(profile?.full_name || '');
   }
 
   const updateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user) return;
+    if (!user) {
+      toast({
+        title: 'Authentication required',
+        description: 'Please sign in to update your profile.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     try {
       setUpdating(true);
+      console.log('Updating profile for user:', user.id);
       
       const updates = {
         id: user.id,

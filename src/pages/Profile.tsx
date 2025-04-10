@@ -38,7 +38,7 @@ const Profile = () => {
   const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    console.log("Profile component mounted, user:", user);
+    console.log("Profile component mounted, user:", user?.id || "No user");
     
     if (!user) {
       console.log("No user found, redirecting to auth page");
@@ -53,6 +53,8 @@ const Profile = () => {
       } catch (err) {
         console.error("Error loading profile data:", err);
         setError("Failed to load profile data. Please try refreshing the page.");
+      } finally {
+        setLoading(false);
       }
     };
     
@@ -60,15 +62,20 @@ const Profile = () => {
   }, [user, navigate]);
 
   const fetchProfile = async () => {
+    if (!user) {
+      console.log("Cannot fetch profile: No user");
+      return;
+    }
+    
     try {
-      console.log("Fetching profile for user ID:", user?.id);
+      console.log("Fetching profile for user ID:", user.id);
       setLoading(true);
       
       // First check if the profile exists
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', user?.id)
+        .eq('id', user.id)
         .single();
       
       if (error) {
@@ -85,10 +92,10 @@ const Profile = () => {
         setProfile(data);
       } else {
         // Create a profile if it doesn't exist
-        console.log("Creating new profile for user:", user?.id);
+        console.log("Creating new profile for user:", user.id);
         const newProfile = {
-          id: user?.id || '',
-          username: user?.email?.split('@')[0] || '',
+          id: user.id,
+          username: user.email?.split('@')[0] || '',
           full_name: '',
           avatar_url: null,
           updated_at: new Date().toISOString(),
@@ -102,22 +109,24 @@ const Profile = () => {
           
         if (insertError) {
           console.error("Error creating profile:", insertError);
-          throw insertError;
+          toast({
+            title: 'Error',
+            description: 'Could not create profile: ' + insertError.message,
+            variant: 'destructive',
+          });
         }
         
         console.log("New profile created:", insertedProfile);
         setProfile(insertedProfile || newProfile);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in fetchProfile:', error);
       toast({
         title: 'Error fetching profile',
-        description: 'Unable to load your profile information. Please try again.',
+        description: 'Unable to load your profile information: ' + error.message,
         variant: 'destructive',
       });
       setError("Failed to load profile information");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -143,11 +152,11 @@ const Profile = () => {
       
       console.log("Boards fetched:", data);
       setBoards(data || []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in fetchUserBoards:', error);
       toast({
         title: 'Error loading boards',
-        description: 'Unable to load your boards. Please try again.',
+        description: 'Unable to load your boards: ' + error.message,
         variant: 'destructive',
       });
     } finally {
