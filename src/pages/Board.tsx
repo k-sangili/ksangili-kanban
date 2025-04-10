@@ -6,6 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
 import { User, ArrowLeft, Settings } from 'lucide-react';
+import { Header } from '@/components/layout/Header';
+import { ShareBoardDialog } from '@/components/board/ShareBoardDialog';
 
 // This is a placeholder Board view - in a real application, this would be a full Kanban board for a specific board ID
 const Board = () => {
@@ -14,6 +16,7 @@ const Board = () => {
   const navigate = useNavigate();
   const [board, setBoard] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -29,7 +32,6 @@ const Board = () => {
           .from('boards')
           .select('*')
           .eq('id', boardId)
-          .eq('user_id', user.id)
           .single();
 
         if (error) {
@@ -38,6 +40,18 @@ const Board = () => {
 
         if (data) {
           setBoard(data);
+          
+          // Check if user is an owner
+          const { data: memberData, error: memberError } = await (supabase as any)
+            .from('board_members')
+            .select('role')
+            .eq('board_id', boardId)
+            .eq('user_id', user.id)
+            .single();
+            
+          if (!memberError && memberData) {
+            setIsOwner(memberData.role === 'owner');
+          }
         } else {
           // Board not found or doesn't belong to user
           toast({
@@ -72,21 +86,19 @@ const Board = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 p-4">
-      <div className="container mx-auto max-w-6xl py-6">
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+      <Header />
+      <div className="container mx-auto max-w-6xl py-6 px-4">
         <div className="flex justify-between items-center mb-6">
           <Link to="/profile" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Profile
           </Link>
           
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/profile">
-                <User className="h-4 w-4 mr-2" />
-                Profile
-              </Link>
-            </Button>
+          <div className="flex items-center gap-2">
+            {isOwner && (
+              <ShareBoardDialog boardId={boardId || ''} boardName={board.name} />
+            )}
             <Button variant="outline" size="sm">
               <Settings className="h-4 w-4 mr-2" />
               Board Settings

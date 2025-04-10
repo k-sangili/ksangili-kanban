@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { User, ArrowLeft, SaveIcon, Plus } from 'lucide-react';
+import { SaveIcon, Plus } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { UserBoards } from '@/components/profile/UserBoards';
+import { Header } from '@/components/layout/Header';
 
 type Profile = {
   id: string;
@@ -30,7 +30,7 @@ type Board = {
 };
 
 const Profile = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -207,19 +207,9 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 p-4">
-      <div className="container mx-auto max-w-5xl py-6">
-        <div className="flex justify-between items-center mb-6">
-          <Link to="/" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </Link>
-          
-          <Button variant="outline" onClick={signOut} size="sm">
-            Sign out
-          </Button>
-        </div>
-        
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+      <Header />
+      <div className="container mx-auto max-w-5xl py-6 px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Profile Card */}
           <Card className="md:col-span-1">
