@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { toast } from '@/hooks/use-toast';
+import { toast } from '@/components/ui/use-toast';
 import { AlertCircle, ExternalLink } from 'lucide-react';
 
 const Auth = () => {
@@ -99,13 +100,17 @@ const Auth = () => {
       if (error) {
         console.error("Google sign-in error:", error);
         
+        // Add more detailed error messages based on the error type
         if (error.message.includes("provider is not enabled")) {
           setGoogleError("The Google provider is not enabled in your Supabase project. Please enable it in your Supabase dashboard under Authentication > Providers > Google.");
         } else if (error.status === 403 || error.message.includes("403")) {
           setGoogleError("Received a 403 Forbidden error. This usually means your Google OAuth credentials (Client ID and Secret) are missing or incorrect in Supabase.");
         } else if (error.message.includes("redirect_uri_mismatch") || error.message.includes("400")) {
           const redirectUrl = window.location.origin;
-          setGoogleError(`Error 400: redirect_uri_mismatch. The redirect URL in your Google OAuth configuration doesn't match the URL Supabase is using. Add this exact URL to your Google Cloud Console OAuth credentials as an authorized redirect URI: ${redirectUrl}`);
+          setGoogleError(`The redirect URL in your Google OAuth configuration doesn't match. Add this exact URL to your Google Cloud Console OAuth credentials as an authorized redirect URI: ${redirectUrl}`);
+        } else if (error.message.includes("requested path is invalid")) {
+          const currentUrl = window.location.origin;
+          setGoogleError(`The "Site URL" or "Redirect URL" is not properly set in Supabase. Go to Authentication > URL Configuration and make sure both URLs contain: ${currentUrl}`);
         }
         
         throw error;
