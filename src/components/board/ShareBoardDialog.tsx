@@ -41,7 +41,7 @@ export function ShareBoardDialog({ boardId, boardName }: ShareBoardDialogProps) 
 
     setIsFetchingMembers(true);
     try {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('board_members')
         .select(`
           id,
@@ -50,7 +50,7 @@ export function ShareBoardDialog({ boardId, boardName }: ShareBoardDialogProps) 
           profiles:user_id (
             username,
             full_name,
-            email:id(email)
+            avatar_url
           )
         `)
         .eq('board_id', boardId);
@@ -64,7 +64,7 @@ export function ShareBoardDialog({ boardId, boardName }: ShareBoardDialogProps) 
         userId: member.user_id,
         username: member.profiles?.username || 'Unknown',
         fullName: member.profiles?.full_name || 'Unknown User',
-        email: member.profiles?.email?.email || 'No email',
+        email: member.profiles?.email || 'No email', // This will be undefined since we don't have direct access to email
       })) || [];
 
       setMembers(membersData);
@@ -90,27 +90,30 @@ export function ShareBoardDialog({ boardId, boardName }: ShareBoardDialogProps) 
 
     setLoading(true);
     try {
-      // First, get the user ID from the email
+      // First, we need to look up the user_id from the email
+      // Since we can't directly query auth.users, we'll use a different approach
+      // 1. Use a custom RPC function (recommended in a production app)
+      // For the demo, we can create a simplified approach:
+      
+      // We'll find the profile by checking for a user with the given email
+      // This assumes your app has a process to save the user's email in the profile
       const { data: userData, error: userError } = await supabase
-        .from('auth')
-        .select('id')
-        .eq('email', email.trim())
-        .single();
+        .rpc('get_user_id_by_email', { email_input: email.trim() });
 
-      if (userError) {
+      if (userError || !userData) {
         toast({
           title: 'User not found',
-          description: 'No user found with this email address.',
+          description: 'No user found with this email address. Please make sure they have an account.',
           variant: 'destructive',
         });
         setLoading(false);
         return;
       }
 
-      const userId = userData.id;
+      const userId = userData;
 
       // Check if user is already a member
-      const { data: existingMember, error: memberError } = await (supabase as any)
+      const { data: existingMember, error: memberError } = await supabase
         .from('board_members')
         .select('*')
         .eq('board_id', boardId)
@@ -128,7 +131,7 @@ export function ShareBoardDialog({ boardId, boardName }: ShareBoardDialogProps) 
       }
 
       // Add the user as a board member
-      const { error: insertError } = await (supabase as any)
+      const { error: insertError } = await supabase
         .from('board_members')
         .insert({
           board_id: boardId,
@@ -159,7 +162,7 @@ export function ShareBoardDialog({ boardId, boardName }: ShareBoardDialogProps) 
 
   const removeMember = async (memberId: string) => {
     try {
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('board_members')
         .delete()
         .eq('id', memberId);
@@ -250,7 +253,7 @@ export function ShareBoardDialog({ boardId, boardName }: ShareBoardDialogProps) 
                 <div key={member.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                   <div>
                     <div className="font-medium">{member.fullName || member.username}</div>
-                    <div className="text-xs text-gray-500">{member.email}</div>
+                    <div className="text-xs text-gray-500">{member.userId}</div>
                     <div className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded inline-block mt-1">
                       {member.role}
                     </div>
