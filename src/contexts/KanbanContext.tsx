@@ -59,10 +59,10 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       console.log('Fetching tasks for user:', user.id);
-      // Use a simple approach to avoid type issues
-      const { data, error } = await supabase
+      // Use a type assertion to avoid the deep type instantiation
+      const { data, error } = await (supabase as any)
         .from('tasks')
-        .select()
+        .select('*')
         .eq('user_id', user.id);
 
       if (error) throw error;
