@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Profile from "./pages/Profile"; 
+import Board from "./pages/Board";
 import NotFound from "./pages/NotFound";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "./contexts/AuthContext";

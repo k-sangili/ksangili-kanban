@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect } from 'react';
 import { Task, TaskStatus, TaskPriority, KanbanColumn } from '@/types/kanban';
 import { useAuth } from './AuthContext';
@@ -58,10 +59,10 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     try {
       console.log('Fetching tasks for user:', user.id);
-      // For now, we fetch all tasks without user_id filtering since our table doesn't have this column yet
       const { data, error } = await supabase
         .from('tasks')
-        .select('*');
+        .select('*')
+        .eq('user_id', user.id);
 
       if (error) throw error;
 
@@ -111,7 +112,8 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
         priority,
         created_at: new Date().toISOString(),
         due_date: dueDate.toISOString(),
-        owner: owner || user.email || user.id
+        owner: owner || user.email || user.id,
+        user_id: user.id
       };
 
       const { data, error } = await supabase
