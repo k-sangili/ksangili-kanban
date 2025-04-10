@@ -90,17 +90,11 @@ export function ShareBoardDialog({ boardId, boardName }: ShareBoardDialogProps) 
 
     setLoading(true);
     try {
-      // First, we need to look up the user_id from the email
-      // Since we can't directly query auth.users, we'll use a different approach
-      // 1. Use a custom RPC function (recommended in a production app)
-      // For the demo, we can create a simplified approach:
-      
-      // We'll find the profile by checking for a user with the given email
-      // This assumes your app has a process to save the user's email in the profile
-      const { data: userData, error: userError } = await supabase
+      // First, we need to look up the user_id from the email using our custom RPC function
+      const { data: userId, error: userError } = await supabase
         .rpc('get_user_id_by_email', { email_input: email.trim() });
 
-      if (userError || !userData) {
+      if (userError || !userId) {
         toast({
           title: 'User not found',
           description: 'No user found with this email address. Please make sure they have an account.',
@@ -109,8 +103,6 @@ export function ShareBoardDialog({ boardId, boardName }: ShareBoardDialogProps) 
         setLoading(false);
         return;
       }
-
-      const userId = userData;
 
       // Check if user is already a member
       const { data: existingMember, error: memberError } = await supabase
