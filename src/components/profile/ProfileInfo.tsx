@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/components/ui/use-toast';
-import { SaveIcon } from 'lucide-react';
+import { SaveIcon, Mail, Calendar, Clock } from 'lucide-react';
 
 type Profile = {
   id: string;
@@ -75,6 +75,11 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
     }
   };
 
+  const formatDate = (dateString: string | undefined) => {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleString();
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -104,9 +109,20 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
               <div className="space-y-1 text-center flex-1">
                 <h3 className="text-xl font-medium">{fullName || 'Set your name'}</h3>
                 <p className="text-gray-500">{user?.email}</p>
-                <p className="text-sm text-gray-400">
-                  Account created: {new Date(user?.created_at || '').toLocaleDateString()}
-                </p>
+                <div className="flex flex-wrap gap-2 justify-center mt-2">
+                  <div className="flex items-center text-sm text-gray-500">
+                    <Mail className="h-4 w-4 mr-1" />
+                    {user?.email_confirmed_at ? 'Email verified' : 'Email not verified'}
+                  </div>
+                  <div className="flex items-center text-sm text-gray-500">
+                    <Calendar className="h-4 w-4 mr-1" />
+                    Joined: {formatDate(user?.created_at)}
+                  </div>
+                  <div className="flex items-center text-sm text-gray-500">
+                    <Clock className="h-4 w-4 mr-1" />
+                    Last sign in: {formatDate(user?.last_sign_in_at)}
+                  </div>
+                </div>
               </div>
             </div>
 
