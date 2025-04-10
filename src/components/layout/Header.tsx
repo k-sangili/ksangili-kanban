@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FolderPlus, Plus, Settings } from 'lucide-react';
@@ -19,6 +20,7 @@ import { HeaderMenu } from './HeaderMenu';
 export function Header() {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+  const [isCreatingBoard, setIsCreatingBoard] = useState(false);
   const [boards, setBoards] = useState<any[]>([]);
   const [sharedBoards, setSharedBoards] = useState<any[]>([]);
   const [showAllBoards, setShowAllBoards] = useState(false);
@@ -29,7 +31,7 @@ export function Header() {
       setIsLoading(true);
       try {
         // Fetch boards owned by the user
-        const { data: ownedBoards, error: ownedError } = await (supabase as any)
+        const { data: ownedBoards, error: ownedError } = await supabase
           .from('boards')
           .select('id, name')
           .eq('user_id', user.id)
@@ -39,7 +41,7 @@ export function Header() {
         if (ownedError) throw ownedError;
         
         // Fetch boards shared with the user (where user is a member but not owner)
-        const { data: memberBoards, error: memberError } = await (supabase as any)
+        const { data: memberBoards, error: memberError } = await supabase
           .from('board_members')
           .select('board_id, boards:board_id(id, name)')
           .eq('user_id', user.id)
@@ -74,13 +76,14 @@ export function Header() {
     if (!user) return;
     
     try {
+      setIsCreatingBoard(true);
       const newBoard = {
         user_id: user.id,
         name: 'New Board',
         description: 'Click to edit this board',
       };
       
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('boards')
         .insert(newBoard)
         .select()
@@ -94,7 +97,9 @@ export function Header() {
       });
       
       // Navigate to the new board
-      window.location.href = `/board/${data.id}`;
+      if (data) {
+        window.location.href = `/board/${data.id}`;
+      }
     } catch (error) {
       console.error('Error creating board:', error);
       toast({
@@ -102,6 +107,8 @@ export function Header() {
         description: 'Unable to create a new board. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setIsCreatingBoard(false);
     }
   };
 
@@ -166,9 +173,9 @@ export function Header() {
                   </>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={createNewBoard}>
+                <DropdownMenuItem onClick={createNewBoard} disabled={isCreatingBoard}>
                   <Plus className="mr-2 h-4 w-4" />
-                  New Board
+                  {isCreatingBoard ? 'Creating...' : 'New Board'}
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/profile" className="w-full">

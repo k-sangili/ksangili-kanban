@@ -34,6 +34,7 @@ const Profile = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [boards, setBoards] = useState<Board[]>([]);
   const [loadingBoards, setLoadingBoards] = useState(false);
+  const [creatingBoard, setCreatingBoard] = useState(false);
   
   useEffect(() => {
     if (user) {
@@ -96,10 +97,9 @@ const Profile = () => {
     
     try {
       setLoadingBoards(true);
-      // Using explicit type casting to bypass the strict typing temporarily
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('boards')
-        .select()
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       
@@ -122,14 +122,14 @@ const Profile = () => {
     if (!user) return;
     
     try {
+      setCreatingBoard(true);
       const newBoard = {
         user_id: user.id,
         name: 'New Board',
         description: 'Click to edit this board',
       };
       
-      // Using explicit type casting to bypass the strict typing temporarily
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from('boards')
         .insert(newBoard)
         .select()
@@ -138,7 +138,7 @@ const Profile = () => {
       if (error) throw error;
       
       if (data) {
-        setBoards([data as Board, ...boards]);
+        setBoards(prevBoards => [data as Board, ...prevBoards]);
         toast({
           title: 'Board created',
           description: 'Your new board has been created successfully.',
@@ -151,6 +151,8 @@ const Profile = () => {
         description: 'Unable to create a new board. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setCreatingBoard(false);
     }
   };
 
@@ -178,9 +180,9 @@ const Profile = () => {
                     Create and manage your Kanban boards
                   </CardDescription>
                 </div>
-                <Button onClick={createNewBoard} size="sm">
+                <Button onClick={createNewBoard} size="sm" disabled={creatingBoard}>
                   <Plus className="h-4 w-4 mr-2" />
-                  New Board
+                  {creatingBoard ? 'Creating...' : 'New Board'}
                 </Button>
               </CardHeader>
               <CardContent>
