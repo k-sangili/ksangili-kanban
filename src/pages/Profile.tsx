@@ -104,7 +104,8 @@ const Profile = () => {
     
     try {
       setLoadingBoards(true);
-      const { data, error } = await supabase
+      // Using "any" type to bypass the strict typing temporarily
+      const { data, error } = await (supabase as any)
         .from('boards')
         .select('*')
         .eq('user_id', user.id)
@@ -179,7 +180,8 @@ const Profile = () => {
         description: 'Click to edit this board',
       };
       
-      const { data, error } = await supabase
+      // Using "any" type to bypass the strict typing temporarily
+      const { data, error } = await (supabase as any)
         .from('boards')
         .insert(newBoard)
         .select()
@@ -188,7 +190,7 @@ const Profile = () => {
       if (error) throw error;
       
       if (data) {
-        setBoards([data, ...boards]);
+        setBoards([data as Board, ...boards]);
         toast({
           title: 'Board created',
           description: 'Your new board has been created successfully.',

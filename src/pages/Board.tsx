@@ -24,7 +24,8 @@ const Board = () => {
     const fetchBoard = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase
+        // Using "any" type to bypass the strict typing temporarily
+        const { data, error } = await (supabase as any)
           .from('boards')
           .select('*')
           .eq('id', boardId)
