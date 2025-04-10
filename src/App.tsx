@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -10,35 +10,13 @@ import Auth from "./pages/Auth";
 import Profile from "./pages/Profile"; 
 import Board from "./pages/Board";
 import NotFound from "./pages/NotFound";
-import { supabase } from "@/integrations/supabase/client";
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
 // Create a component to handle auth state and routing
 const AppRoutes = () => {
-  const [session, setSession] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Set up auth listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, currentSession) => {
-        console.log("Auth state changed:", event, currentSession);
-        setSession(currentSession);
-        setLoading(false);
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      console.log("Initial session check:", currentSession);
-      setSession(currentSession);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const { user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -52,19 +30,19 @@ const AppRoutes = () => {
     <Routes>
       <Route 
         path="/" 
-        element={session ? <Index /> : <Navigate to="/auth" replace />} 
+        element={user ? <Index /> : <Navigate to="/auth" replace />} 
       />
       <Route 
         path="/auth" 
-        element={!session ? <Auth /> : <Navigate to="/" replace />} 
+        element={!user ? <Auth /> : <Navigate to="/" replace />} 
       />
       <Route 
         path="/profile" 
-        element={session ? <Profile /> : <Navigate to="/auth" replace />} 
+        element={<Profile />}  // Don't redirect here to avoid loop when checking auth
       />
       <Route 
         path="/board/:boardId" 
-        element={session ? <Board /> : <Navigate to="/auth" replace />} 
+        element={<Board />}  // Don't redirect here to avoid loop when checking auth
       />
       <Route path="*" element={<NotFound />} />
     </Routes>

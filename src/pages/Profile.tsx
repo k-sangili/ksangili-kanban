@@ -35,18 +35,33 @@ const Profile = () => {
   const [boards, setBoards] = useState<Board[]>([]);
   const [loadingBoards, setLoadingBoards] = useState(false);
   const [creatingBoard, setCreatingBoard] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
-    if (user) {
-      fetchProfile();
-      fetchUserBoards();
-    } else {
+    console.log("Profile component mounted, user:", user);
+    
+    if (!user) {
+      console.log("No user found, redirecting to auth page");
       navigate('/auth');
+      return;
     }
+    
+    const loadProfileData = async () => {
+      try {
+        await fetchProfile();
+        await fetchUserBoards();
+      } catch (err) {
+        console.error("Error loading profile data:", err);
+        setError("Failed to load profile data. Please try refreshing the page.");
+      }
+    };
+    
+    loadProfileData();
   }, [user, navigate]);
 
   const fetchProfile = async () => {
     try {
+      console.log("Fetching profile for user ID:", user?.id);
       setLoading(true);
       
       // First check if the profile exists
@@ -56,14 +71,21 @@ const Profile = () => {
         .eq('id', user?.id)
         .single();
       
-      if (error && error.code !== 'PGRST116') {
-        throw error;
+      if (error) {
+        console.error("Error fetching profile:", error);
+        if (error.code !== 'PGRST116') {
+          throw error;
+        } else {
+          console.log("Profile not found, will create a new one");
+        }
       }
       
       if (data) {
+        console.log("Profile found:", data);
         setProfile(data);
       } else {
         // Create a profile if it doesn't exist
+        console.log("Creating new profile for user:", user?.id);
         const newProfile = {
           id: user?.id || '',
           username: user?.email?.split('@')[0] || '',
@@ -72,30 +94,41 @@ const Profile = () => {
           updated_at: new Date().toISOString(),
         };
         
-        const { error: insertError } = await supabase
+        const { error: insertError, data: insertedProfile } = await supabase
           .from('profiles')
-          .insert(newProfile);
+          .insert(newProfile)
+          .select('*')
+          .single();
           
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error("Error creating profile:", insertError);
+          throw insertError;
+        }
         
-        setProfile(newProfile);
+        console.log("New profile created:", insertedProfile);
+        setProfile(insertedProfile || newProfile);
       }
     } catch (error) {
-      console.error('Error fetching profile:', error);
+      console.error('Error in fetchProfile:', error);
       toast({
         title: 'Error fetching profile',
-        description: 'Unable to load your profile information.',
+        description: 'Unable to load your profile information. Please try again.',
         variant: 'destructive',
       });
+      setError("Failed to load profile information");
     } finally {
       setLoading(false);
     }
   };
 
   const fetchUserBoards = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log("Cannot fetch boards: No user");
+      return;
+    }
     
     try {
+      console.log("Fetching boards for user ID:", user.id);
       setLoadingBoards(true);
       const { data, error } = await supabase
         .from('boards')
@@ -103,14 +136,18 @@ const Profile = () => {
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching boards:", error);
+        throw error;
+      }
       
+      console.log("Boards fetched:", data);
       setBoards(data || []);
     } catch (error) {
-      console.error('Error fetching boards:', error);
+      console.error('Error in fetchUserBoards:', error);
       toast({
         title: 'Error loading boards',
-        description: 'Unable to load your boards.',
+        description: 'Unable to load your boards. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -119,10 +156,20 @@ const Profile = () => {
   };
 
   const createNewBoard = async () => {
-    if (!user) return;
+    if (!user) {
+      console.log("Cannot create board: No user");
+      toast({
+        title: 'Authentication required',
+        description: 'Please sign in to create a board.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     try {
       setCreatingBoard(true);
+      console.log("Creating new board for user:", user.id);
+      
       const newBoard = {
         user_id: user.id,
         name: 'New Board',
@@ -135,8 +182,12 @@ const Profile = () => {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error creating board:", error);
+        throw error;
+      }
       
+      console.log("New board created:", data);
       if (data) {
         setBoards(prevBoards => [data as Board, ...prevBoards]);
         toast({
@@ -145,7 +196,7 @@ const Profile = () => {
         });
       }
     } catch (error) {
-      console.error('Error creating board:', error);
+      console.error('Error in createNewBoard:', error);
       toast({
         title: 'Error creating board',
         description: 'Unable to create a new board. Please try again.',
@@ -156,45 +207,81 @@ const Profile = () => {
     }
   };
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+        <Header />
+        <div className="container mx-auto max-w-5xl py-12 px-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl font-bold">Error</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-red-500">{error}</p>
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="mt-4"
+              >
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       <Header />
       <div className="container mx-auto max-w-5xl py-6 px-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Profile Card */}
-          <div className="md:col-span-1">
-            <ProfileInfo 
-              user={user} 
-              profile={profile}
-              loading={loading}
-            />
+        {!user ? (
+          <Card className="my-8">
+            <CardHeader>
+              <CardTitle>Authentication Required</CardTitle>
+              <CardDescription>Please sign in to view your profile</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button onClick={() => navigate('/auth')}>Sign In</Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Profile Card */}
+            <div className="md:col-span-1">
+              <ProfileInfo 
+                user={user} 
+                profile={profile}
+                loading={loading}
+              />
+            </div>
+            
+            {/* Boards Section */}
+            <div className="md:col-span-2">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <div>
+                    <CardTitle className="text-xl font-bold">My Boards</CardTitle>
+                    <CardDescription>
+                      Create and manage your Kanban boards
+                    </CardDescription>
+                  </div>
+                  <Button onClick={createNewBoard} size="sm" disabled={creatingBoard}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {creatingBoard ? 'Creating...' : 'New Board'}
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  <UserBoards 
+                    boards={boards} 
+                    loading={loadingBoards} 
+                    onBoardsChange={setBoards}
+                  />
+                </CardContent>
+              </Card>
+            </div>
           </div>
-          
-          {/* Boards Section */}
-          <div className="md:col-span-2">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div>
-                  <CardTitle className="text-xl font-bold">My Boards</CardTitle>
-                  <CardDescription>
-                    Create and manage your Kanban boards
-                  </CardDescription>
-                </div>
-                <Button onClick={createNewBoard} size="sm" disabled={creatingBoard}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {creatingBoard ? 'Creating...' : 'New Board'}
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <UserBoards 
-                  boards={boards} 
-                  loading={loadingBoards} 
-                  onBoardsChange={setBoards}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

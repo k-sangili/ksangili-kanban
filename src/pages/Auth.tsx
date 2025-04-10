@@ -18,8 +18,11 @@ const Auth = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    console.log("Auth page mounted");
+    
     const checkUser = async () => {
       const { data } = await supabase.auth.getSession();
+      console.log("Auth page session check:", data.session?.user?.id || "No session");
       if (data.session) {
         navigate('/');
       }
@@ -29,6 +32,7 @@ const Auth = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log("Auth page auth state change:", event);
         if (session) {
           navigate('/');
         }
@@ -43,18 +47,30 @@ const Auth = () => {
     setLoading(true);
     
     try {
-      const { error } = await supabase.auth.signUp({
+      console.log("Starting sign-up with email:", email);
+      
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
       
       if (error) throw error;
       
+      console.log("Sign-up response:", data);
+      
       toast({
         title: "Check your email",
         description: "We've sent you a confirmation link.",
       });
+      
+      // Check if auto-confirmed
+      if (data.user && !data.user.confirmed_at) {
+        console.log("User needs email confirmation");
+      } else {
+        console.log("User created and confirmed automatically");
+      }
     } catch (error: any) {
+      console.error("Sign-up error:", error);
       toast({
         title: "Error",
         description: error.message || "An error occurred during sign up",
@@ -70,13 +86,18 @@ const Auth = () => {
     setLoading(true);
     
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log("Signing in with email:", email);
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) throw error;
+      
+      console.log("Sign-in successful:", data.user?.id);
     } catch (error: any) {
+      console.error("Sign-in error:", error);
       toast({
         title: "Error",
         description: error.message || "Invalid login credentials",
@@ -195,8 +216,10 @@ const Auth = () => {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    minLength={6}
                     required
                   />
+                  <p className="text-xs text-gray-500">Password must be at least 6 characters</p>
                 </div>
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Creating account...' : 'Sign Up'}
