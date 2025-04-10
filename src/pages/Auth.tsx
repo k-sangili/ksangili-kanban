@@ -131,23 +131,23 @@ const Auth = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-white to-gray-50 p-4 pointer-events-auto">
-      <Card className="w-full max-w-md pointer-events-auto">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-white to-gray-50 p-4">
+      <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Kanban Board</CardTitle>
           <CardDescription className="text-center">
             Sign in or create an account to continue
           </CardDescription>
         </CardHeader>
-        <CardContent className="pointer-events-auto">
+        <CardContent>
           <Tabs defaultValue="signin" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-4 pointer-events-auto">
-              <TabsTrigger value="signin" className="pointer-events-auto">Sign In</TabsTrigger>
-              <TabsTrigger value="signup" className="pointer-events-auto">Sign Up</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="signin">Sign In</TabsTrigger>
+              <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="signin" className="pointer-events-auto">
-              <form onSubmit={handleEmailSignIn} className="space-y-4 pointer-events-auto">
+            <TabsContent value="signin">
+              <form onSubmit={handleEmailSignIn} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input 
@@ -169,14 +169,14 @@ const Auth = () => {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full pointer-events-auto" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Signing in...' : 'Sign In'}
                 </Button>
               </form>
             </TabsContent>
             
-            <TabsContent value="signup" className="pointer-events-auto">
-              <form onSubmit={handleEmailSignUp} className="space-y-4 pointer-events-auto">
+            <TabsContent value="signup">
+              <form onSubmit={handleEmailSignUp} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email-signup">Email</Label>
                   <Input 
@@ -198,7 +198,7 @@ const Auth = () => {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full pointer-events-auto" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Creating account...' : 'Sign Up'}
                 </Button>
               </form>
@@ -245,7 +245,7 @@ const Auth = () => {
           
           <Button 
             variant="outline" 
-            className="w-full pointer-events-auto" 
+            className="w-full" 
             onClick={handleGoogleSignIn}
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" className="mr-2">
@@ -257,7 +257,7 @@ const Auth = () => {
             Sign in with Google
           </Button>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-2 pointer-events-auto">
+        <CardFooter className="flex flex-col space-y-2">
           <div className="text-xs text-center text-muted-foreground">
             By continuing, you agree to our Terms of Service and Privacy Policy.
           </div>

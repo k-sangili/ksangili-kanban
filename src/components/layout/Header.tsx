@@ -108,14 +108,14 @@ export function Header() {
   };
 
   return (
-    <header className="border-b bg-white">
+    <header className="border-b bg-white z-10">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
         <Link to="/" className="text-lg font-bold text-primary">
           Kanban Board
         </Link>
 
         {user && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 z-20">
             <DropdownMenu onOpenChange={handleDropdownOpen}>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="flex items-center gap-2">
@@ -135,7 +135,7 @@ export function Header() {
                       <DropdownMenuGroup>
                         {boards.slice(0, showAllBoards ? undefined : 5).map(board => (
                           <DropdownMenuItem key={board.id} asChild>
-                            <Link to={`/board/${board.id}`} className="cursor-pointer">
+                            <Link to={`/board/${board.id}`} className="cursor-pointer w-full">
                               {board.name}
                             </Link>
                           </DropdownMenuItem>
@@ -157,7 +157,7 @@ export function Header() {
                         <DropdownMenuGroup>
                           {sharedBoards.map(board => (
                             <DropdownMenuItem key={board.id} asChild>
-                              <Link to={`/board/${board.id}`} className="cursor-pointer">
+                              <Link to={`/board/${board.id}`} className="cursor-pointer w-full">
                                 {board.name}
                               </Link>
                             </DropdownMenuItem>
@@ -173,7 +173,7 @@ export function Header() {
                   New Board
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                  <Link to="/profile">
+                  <Link to="/profile" className="w-full">
                     <Settings className="mr-2 h-4 w-4" />
                     Manage All Boards
                   </Link>
@@ -195,7 +195,7 @@ export function Header() {
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/profile" className="cursor-pointer">
+                  <Link to="/profile" className="w-full cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </Link>
