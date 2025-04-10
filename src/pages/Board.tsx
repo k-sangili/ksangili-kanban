@@ -5,11 +5,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Button } from '@/components/ui/button';
-import { User, ArrowLeft, Settings } from 'lucide-react';
+import { ArrowLeft, Settings } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { ShareBoardDialog } from '@/components/board/ShareBoardDialog';
+import { KanbanProvider } from '@/contexts/KanbanContext';
+import KanbanBoard from '@/components/kanban/KanbanBoard';
 
-// This is a placeholder Board view - in a real application, this would be a full Kanban board for a specific board ID
 const Board = () => {
   const { boardId } = useParams<{ boardId: string }>();
   const { user } = useAuth();
@@ -88,7 +89,7 @@ const Board = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       <Header />
-      <div className="container mx-auto max-w-6xl py-6 px-4">
+      <div className="container mx-auto max-w-7xl py-6 px-4">
         <div className="flex justify-between items-center mb-6">
           <Link to="/profile" className="flex items-center text-sm text-gray-600 hover:text-gray-900">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -113,18 +114,11 @@ const Board = () => {
           )}
         </div>
         
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-center py-8">
-            <h2 className="text-xl font-semibold mb-4">Board View Coming Soon</h2>
-            <p className="text-gray-600 mb-6">
-              This is a placeholder for the full Kanban board view. 
-              In a real application, this would display the tasks and columns specific to this board.
-            </p>
-            <Button asChild>
-              <Link to="/profile">Return to Profile</Link>
-            </Button>
-          </div>
-        </div>
+        {boardId && (
+          <KanbanProvider boardId={boardId}>
+            <KanbanBoard />
+          </KanbanProvider>
+        )}
       </div>
     </div>
   );

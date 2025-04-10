@@ -94,6 +94,7 @@ export type Database = {
       }
       tasks: {
         Row: {
+          board_id: string | null
           created_at: string
           description: string
           due_date: string
@@ -102,8 +103,10 @@ export type Database = {
           priority: string
           status: string
           title: string
+          user_id: string
         }
         Insert: {
+          board_id?: string | null
           created_at?: string
           description: string
           due_date?: string
@@ -112,8 +115,10 @@ export type Database = {
           priority: string
           status: string
           title: string
+          user_id: string
         }
         Update: {
+          board_id?: string | null
           created_at?: string
           description?: string
           due_date?: string
@@ -122,8 +127,17 @@ export type Database = {
           priority?: string
           status?: string
           title?: string
+          user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "tasks_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "boards"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

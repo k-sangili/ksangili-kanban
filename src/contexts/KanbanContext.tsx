@@ -3,6 +3,8 @@ import { createContext, useContext, useState, useEffect } from 'react';
 import { Task, TaskStatus, TaskPriority, KanbanColumn } from '@/types/kanban';
 import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useParams } from 'react-router-dom';
+import { toast } from '@/components/ui/use-toast';
 
 type KanbanContextType = {
   columns: KanbanColumn[];
@@ -30,7 +32,7 @@ const mapTaskFromSupabase = (task: any): Task => {
   };
 };
 
-export function KanbanProvider({ children }: { children: React.ReactNode }) {
+export function KanbanProvider({ children, boardId }: { children: React.ReactNode, boardId?: string }) {
   const [columns, setColumns] = useState<KanbanColumn[]>([
     { id: 'backlog', title: 'Backlog', tasks: [] },
     { id: 'todo', title: 'To Do', tasks: [] },
@@ -39,13 +41,14 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
   ]);
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
+  const params = useParams();
+  // Use boardId prop if provided, otherwise try to get from URL params
+  const currentBoardId = boardId || params.boardId;
 
   useEffect(() => {
-    fetchTasks();
-  }, [user]);
-
-  const fetchTasks = async () => {
-    if (!user) {
+    if (user) {
+      fetchTasks();
+    } else {
       console.log('No user found, skipping task fetch');
       setColumns([
         { id: 'backlog', title: 'Backlog', tasks: [] },
@@ -53,17 +56,30 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
         { id: 'in-progress', title: 'In Progress', tasks: [] },
         { id: 'done', title: 'Done', tasks: [] },
       ]);
+    }
+  }, [user, currentBoardId]);
+
+  const fetchTasks = async () => {
+    if (!user) {
+      console.log('No user found, skipping task fetch');
       return;
     }
 
     setLoading(true);
     try {
-      console.log('Fetching tasks for user:', user.id);
-      // Use a type assertion to avoid the deep type instantiation
-      const { data, error } = await (supabase as any)
+      console.log('Fetching tasks for user:', user.id, 'board:', currentBoardId || 'all boards');
+      
+      let query = supabase
         .from('tasks')
         .select('*')
         .eq('user_id', user.id);
+      
+      // If we have a board ID, filter by it
+      if (currentBoardId) {
+        query = query.eq('board_id', currentBoardId);
+      }
+      
+      const { data, error } = await query;
 
       if (error) throw error;
 
@@ -94,6 +110,11 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
       ]);
     } catch (error: any) {
       console.error('Error fetching tasks:', error.message);
+      toast({
+        title: "Error fetching tasks",
+        description: error.message,
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -102,6 +123,11 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
   const addTask = async (title: string, description: string, status: TaskStatus, priority: TaskPriority, dueDate: Date, owner: string | null) => {
     if (!user) {
       console.error('Cannot add task: No user logged in.');
+      toast({
+        title: "Authentication required",
+        description: "You must be logged in to add tasks",
+        variant: "destructive"
+      });
       return;
     }
 
@@ -114,7 +140,8 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
         created_at: new Date().toISOString(),
         due_date: dueDate.toISOString(),
         owner: owner || user.email || user.id,
-        user_id: user.id
+        user_id: user.id,
+        board_id: currentBoardId || null
       };
 
       const { data, error } = await supabase
@@ -141,6 +168,11 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (error: any) {
       console.error('Error adding task:', error.message);
+      toast({
+        title: "Error adding task",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
@@ -173,6 +205,11 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (error: any) {
       console.error('Error updating task status:', error.message);
+      toast({
+        title: "Error updating task",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
@@ -205,6 +242,11 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (error: any) {
       console.error('Error updating task details:', error.message);
+      toast({
+        title: "Error updating task details",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
 
@@ -226,6 +268,11 @@ export function KanbanProvider({ children }: { children: React.ReactNode }) {
       });
     } catch (error: any) {
       console.error('Error deleting task:', error.message);
+      toast({
+        title: "Error deleting task",
+        description: error.message,
+        variant: "destructive"
+      });
     }
   };
   
