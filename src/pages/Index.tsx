@@ -3,7 +3,8 @@ import { KanbanProvider } from '@/contexts/KanbanContext';
 import KanbanBoard from '@/components/kanban/KanbanBoard';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
+import { LogOut, User } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Index = () => {
   const { signOut, user } = useAuth();
@@ -18,6 +19,12 @@ const Index = () => {
               {user.email}
             </div>
           )}
+          <Link to="/profile">
+            <Button variant="outline" size="sm">
+              <User className="h-4 w-4 mr-2" />
+              Profile
+            </Button>
+          </Link>
           <Button variant="outline" size="sm" onClick={signOut}>
             <LogOut className="h-4 w-4 mr-2" />
             Sign out

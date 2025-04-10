@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import Profile from "./pages/Profile"; 
 import NotFound from "./pages/NotFound";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -55,6 +56,10 @@ const AppRoutes = () => {
       <Route 
         path="/auth" 
         element={!session ? <Auth /> : <Navigate to="/" replace />} 
+      />
+      <Route 
+        path="/profile" 
+        element={session ? <Profile /> : <Navigate to="/auth" replace />} 
       />
       <Route path="*" element={<NotFound />} />
     </Routes>
