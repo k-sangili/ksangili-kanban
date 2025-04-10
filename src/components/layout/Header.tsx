@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FolderPlus, Plus, Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,7 @@ import { HeaderMenu } from './HeaderMenu';
 
 export function Header() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isCreatingBoard, setIsCreatingBoard] = useState(false);
   const [boards, setBoards] = useState<any[]>([]);
@@ -73,7 +74,15 @@ export function Header() {
   };
 
   const createNewBoard = async () => {
-    if (!user) return;
+    if (!user) {
+      // If user is not authenticated, redirect to auth page
+      toast({
+        title: 'Authentication required',
+        description: 'Please sign in to create a board.',
+      });
+      navigate('/auth');
+      return;
+    }
     
     try {
       setIsCreatingBoard(true);
@@ -83,13 +92,18 @@ export function Header() {
         description: 'Click to edit this board',
       };
       
+      console.log('Creating new board with user_id:', user.id);
+      
       const { data, error } = await supabase
         .from('boards')
         .insert(newBoard)
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error creating board:', error);
+        throw error;
+      }
       
       toast({
         title: 'Board created',
@@ -98,13 +112,14 @@ export function Header() {
       
       // Navigate to the new board
       if (data) {
-        window.location.href = `/board/${data.id}`;
+        console.log('Board created successfully:', data);
+        navigate(`/board/${data.id}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating board:', error);
       toast({
         title: 'Error creating board',
-        description: 'Unable to create a new board. Please try again.',
+        description: `Unable to create a new board: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {

@@ -163,6 +163,7 @@ const Profile = () => {
         description: 'Please sign in to create a board.',
         variant: 'destructive',
       });
+      navigate('/auth');
       return;
     }
     
@@ -194,12 +195,14 @@ const Profile = () => {
           title: 'Board created',
           description: 'Your new board has been created successfully.',
         });
+        // Navigate to the new board after creation
+        navigate(`/board/${data.id}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in createNewBoard:', error);
       toast({
         title: 'Error creating board',
-        description: 'Unable to create a new board. Please try again.',
+        description: `Unable to create a new board: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
     } finally {
