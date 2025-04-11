@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -93,11 +92,15 @@ const Profile = () => {
       } else {
         // Create a profile if it doesn't exist
         console.log("Creating new profile for user:", user.id);
+        
+        // Get user metadata for potential profile info
+        const userMeta = user.user_metadata;
+        
         const newProfile = {
           id: user.id,
           username: user.email?.split('@')[0] || '',
-          full_name: '',
-          avatar_url: null,
+          full_name: userMeta?.full_name || userMeta?.name || '',
+          avatar_url: userMeta?.avatar_url || null,
           updated_at: new Date().toISOString(),
         };
         

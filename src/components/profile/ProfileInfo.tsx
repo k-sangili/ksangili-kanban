@@ -28,16 +28,34 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
   const [updating, setUpdating] = useState(false);
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   // Update state when profile changes - in useEffect to avoid render issues
   useEffect(() => {
     if (profile) {
       setUsername(profile.username || '');
       setFullName(profile.full_name || '');
+      setAvatarUrl(profile.avatar_url);
     } else if (user) {
       // Default values if no profile exists yet
       setUsername(user.email?.split('@')[0] || '');
-      setFullName('');
+      
+      // For Google users, try to get name from user metadata
+      const userMeta = user.user_metadata;
+      if (userMeta?.full_name) {
+        setFullName(userMeta.full_name);
+      } else if (userMeta?.name) {
+        setFullName(userMeta.name);
+      } else {
+        setFullName('');
+      }
+      
+      // For Google users, try to get avatar from user metadata
+      if (userMeta?.avatar_url) {
+        setAvatarUrl(userMeta.avatar_url);
+      } else {
+        setAvatarUrl(null);
+      }
     }
   }, [profile, user]);
 
@@ -61,6 +79,7 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
         id: user.id,
         username,
         full_name: fullName,
+        avatar_url: avatarUrl,
         updated_at: new Date().toISOString(),
       };
       
@@ -108,8 +127,8 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
           <form onSubmit={updateProfile} className="space-y-6">
             <div className="flex flex-col gap-4 items-center">
               <Avatar className="h-24 w-24 border-2 border-gray-200">
-                {profile?.avatar_url ? (
-                  <AvatarImage src={profile.avatar_url} alt={username || user?.email || ''} />
+                {avatarUrl ? (
+                  <AvatarImage src={avatarUrl} alt={username || user?.email || ''} />
                 ) : (
                   <AvatarFallback className="text-lg bg-primary text-primary-foreground">
                     {(username?.[0] || user?.email?.[0] || '').toUpperCase()}
