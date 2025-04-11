@@ -48,6 +48,7 @@ const Profile = () => {
     
     const loadProfileData = async () => {
       try {
+        setLoading(true);
         await fetchProfile();
         await fetchUserBoards();
       } catch (err) {
@@ -69,7 +70,6 @@ const Profile = () => {
     
     try {
       console.log("Fetching profile for user ID:", user.id);
-      setLoading(true);
       
       // First check if the profile exists
       const { data, error } = await supabase
@@ -114,10 +114,10 @@ const Profile = () => {
             description: 'Could not create profile: ' + insertError.message,
             variant: 'destructive',
           });
+        } else {
+          console.log("New profile created:", insertedProfile);
+          setProfile(insertedProfile || newProfile);
         }
-        
-        console.log("New profile created:", insertedProfile);
-        setProfile(insertedProfile || newProfile);
       }
     } catch (error: any) {
       console.error('Error in fetchProfile:', error);
@@ -126,7 +126,7 @@ const Profile = () => {
         description: 'Unable to load your profile information: ' + error.message,
         variant: 'destructive',
       });
-      setError("Failed to load profile information");
+      throw error; // Re-throw so the outer try-catch can handle it
     }
   };
 

@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -26,17 +26,20 @@ interface ProfileInfoProps {
 
 export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
   const [updating, setUpdating] = useState(false);
-  const [username, setUsername] = useState(profile?.username || '');
-  const [fullName, setFullName] = useState(profile?.full_name || '');
+  const [username, setUsername] = useState('');
+  const [fullName, setFullName] = useState('');
 
-  // Update state when profile changes
-  if (profile?.username !== username && profile?.username !== null && !updating) {
-    setUsername(profile?.username || '');
-  }
-  
-  if (profile?.full_name !== fullName && profile?.full_name !== null && !updating) {
-    setFullName(profile?.full_name || '');
-  }
+  // Update state when profile changes - in useEffect to avoid render issues
+  useEffect(() => {
+    if (profile) {
+      setUsername(profile.username || '');
+      setFullName(profile.full_name || '');
+    } else if (user) {
+      // Default values if no profile exists yet
+      setUsername(user.email?.split('@')[0] || '');
+      setFullName('');
+    }
+  }, [profile, user]);
 
   const updateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
