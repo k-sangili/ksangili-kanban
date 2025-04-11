@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,6 +70,7 @@ const Profile = () => {
     
     try {
       console.log("Fetching profile for user ID:", user.id);
+      console.log("User metadata:", user.user_metadata);
       
       // First check if the profile exists
       const { data, error } = await supabase
@@ -95,6 +97,7 @@ const Profile = () => {
         
         // Get user metadata for potential profile info
         const userMeta = user.user_metadata;
+        console.log("User metadata for profile creation:", userMeta);
         
         const newProfile = {
           id: user.id,
@@ -103,6 +106,8 @@ const Profile = () => {
           avatar_url: userMeta?.avatar_url || null,
           updated_at: new Date().toISOString(),
         };
+        
+        console.log("New profile to be created:", newProfile);
         
         const { error: insertError, data: insertedProfile } = await supabase
           .from('profiles')
