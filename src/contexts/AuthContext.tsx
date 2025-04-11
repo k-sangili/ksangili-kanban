@@ -20,29 +20,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     console.log("AuthContext: Initializing auth state...");
+    let isMounted = true;
 
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         console.log("AuthContext state change:", event, "User ID:", currentSession?.user?.id);
         console.log("Auth provider:", currentSession?.user?.app_metadata?.provider);
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        setLoading(false);
         
-        if (event === 'SIGNED_IN') {
-          console.log("User signed in:", currentSession?.user?.id);
-          console.log("Full user object:", JSON.stringify(currentSession?.user, null, 2));
-          toast({
-            title: "Signed in successfully",
-            description: `Welcome${currentSession?.user?.email ? ` ${currentSession.user.email}` : ''}!`,
-          });
-        } else if (event === 'SIGNED_OUT') {
-          console.log("User signed out");
-          toast({
-            title: "Signed out",
-            description: "You have been signed out",
-          });
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
+          setLoading(false);
+          
+          if (event === 'SIGNED_IN') {
+            console.log("User signed in:", currentSession?.user?.id);
+            console.log("Full user object:", JSON.stringify(currentSession?.user, null, 2));
+            toast({
+              title: "Signed in successfully",
+              description: `Welcome${currentSession?.user?.email ? ` ${currentSession.user.email}` : ''}!`,
+            });
+          } else if (event === 'SIGNED_OUT') {
+            console.log("User signed out");
+            toast({
+              title: "Signed out",
+              description: "You have been signed out",
+            });
+          }
         }
       }
     );
@@ -53,12 +58,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (currentSession?.user) {
         console.log("Full user object:", JSON.stringify(currentSession.user, null, 2));
       }
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      setLoading(false);
+      
+      // Only update state if component is still mounted
+      if (isMounted) {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        setLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {

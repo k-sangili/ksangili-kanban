@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -28,7 +28,17 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
   const [username, setUsername] = useState('');
   const [fullName, setFullName] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const isMounted = useRef(true);
 
+  // Set up mounted ref for cleanup
+  useEffect(() => {
+    isMounted.current = true;
+    
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+  
   useEffect(() => {
     if (user) {
       console.log("ProfileInfo received user:", user.id);
@@ -47,6 +57,8 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
 
   // Update state when profile changes - in useEffect to avoid render issues
   useEffect(() => {
+    if (!isMounted.current) return;
+    
     if (profile) {
       console.log("Setting form values from profile");
       setUsername(profile.username || '');
@@ -97,6 +109,7 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
     }
     
     try {
+      if (!isMounted.current) return;
       setUpdating(true);
       console.log('Updating profile for user:', user.id);
       
@@ -121,19 +134,25 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
       
       console.log('Profile updated successfully');
       
-      toast({
-        title: 'Profile updated',
-        description: 'Your profile has been updated successfully.',
-      });
+      if (isMounted.current) {
+        toast({
+          title: 'Profile updated',
+          description: 'Your profile has been updated successfully.',
+        });
+      }
     } catch (error: any) {
       console.error('Error updating profile:', error);
-      toast({
-        title: 'Error updating profile',
-        description: 'Unable to update your profile. Please try again. ' + error.message,
-        variant: 'destructive',
-      });
+      if (isMounted.current) {
+        toast({
+          title: 'Error updating profile',
+          description: 'Unable to update your profile. Please try again. ' + error.message,
+          variant: 'destructive',
+        });
+      }
     } finally {
-      setUpdating(false);
+      if (isMounted.current) {
+        setUpdating(false);
+      }
     }
   };
 
@@ -142,6 +161,7 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
     return new Date(dateString).toLocaleString();
   };
 
+  
   return (
     <Card>
       <CardHeader>

@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -16,15 +15,28 @@ const Auth = () => {
   const [loading, setLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const isMounted = useRef(true);
 
   useEffect(() => {
+    isMounted.current = true;
     console.log("Auth page mounted");
     
+    return () => {
+      console.log("Auth page unmounting");
+      isMounted.current = false;
+    };
+  }, []);
+  
+  useEffect(() => {
     const checkUser = async () => {
-      const { data } = await supabase.auth.getSession();
-      console.log("Auth page session check:", data.session?.user?.id || "No session");
-      if (data.session) {
-        navigate('/');
+      try {
+        const { data } = await supabase.auth.getSession();
+        console.log("Auth page session check:", data.session?.user?.id || "No session");
+        if (data.session && isMounted.current) {
+          navigate('/');
+        }
+      } catch (error) {
+        console.error("Error checking session:", error);
       }
     };
     
@@ -33,7 +45,7 @@ const Auth = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log("Auth page auth state change:", event);
-        if (session) {
+        if (session && isMounted.current) {
           navigate('/');
         }
       }
@@ -44,6 +56,8 @@ const Auth = () => {
 
   const handleEmailSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isMounted.current) return;
+    
     setLoading(true);
     
     try {
@@ -58,10 +72,12 @@ const Auth = () => {
       
       console.log("Sign-up response:", data);
       
-      toast({
-        title: "Check your email",
-        description: "We've sent you a confirmation link.",
-      });
+      if (isMounted.current) {
+        toast({
+          title: "Check your email",
+          description: "We've sent you a confirmation link.",
+        });
+      }
       
       // Check if auto-confirmed
       if (data.user && !data.user.confirmed_at) {
@@ -71,18 +87,24 @@ const Auth = () => {
       }
     } catch (error: any) {
       console.error("Sign-up error:", error);
-      toast({
-        title: "Error",
-        description: error.message || "An error occurred during sign up",
-        variant: "destructive",
-      });
+      if (isMounted.current) {
+        toast({
+          title: "Error",
+          description: error.message || "An error occurred during sign up",
+          variant: "destructive",
+        });
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
   };
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isMounted.current) return;
+    
     setLoading(true);
     
     try {
@@ -98,16 +120,20 @@ const Auth = () => {
       console.log("Sign-in successful:", data.user?.id);
     } catch (error: any) {
       console.error("Sign-in error:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Invalid login credentials",
-        variant: "destructive",
-      });
-      setLoading(false);
+      if (isMounted.current) {
+        toast({
+          title: "Error",
+          description: error.message || "Invalid login credentials",
+          variant: "destructive",
+        });
+        setLoading(false);
+      }
     }
   };
 
   const handleGoogleSignIn = async () => {
+    if (!isMounted.current) return;
+    
     setGoogleError(null);
     try {
       console.log("Starting Google sign-in process...");
@@ -121,17 +147,19 @@ const Auth = () => {
       if (error) {
         console.error("Google sign-in error:", error);
         
-        // Add more detailed error messages based on the error type
-        if (error.message.includes("provider is not enabled")) {
-          setGoogleError("The Google provider is not enabled in your Supabase project. Please enable it in your Supabase dashboard under Authentication > Providers > Google.");
-        } else if (error.status === 403 || error.message.includes("403")) {
-          setGoogleError("Received a 403 Forbidden error. This usually means your Google OAuth credentials (Client ID and Secret) are missing or incorrect in Supabase.");
-        } else if (error.message.includes("redirect_uri_mismatch") || error.message.includes("400")) {
-          const redirectUrl = window.location.origin;
-          setGoogleError(`The redirect URL in your Google OAuth configuration doesn't match. Add this exact URL to your Google Cloud Console OAuth credentials as an authorized redirect URI: ${redirectUrl}`);
-        } else if (error.message.includes("requested path is invalid")) {
-          const currentUrl = window.location.origin;
-          setGoogleError(`The "Site URL" or "Redirect URL" is not properly set in Supabase. Go to Authentication > URL Configuration and make sure both URLs contain: ${currentUrl}`);
+        if (isMounted.current) {
+          // Add more detailed error messages based on the error type
+          if (error.message.includes("provider is not enabled")) {
+            setGoogleError("The Google provider is not enabled in your Supabase project. Please enable it in your Supabase dashboard under Authentication > Providers > Google.");
+          } else if (error.status === 403 || error.message.includes("403")) {
+            setGoogleError("Received a 403 Forbidden error. This usually means your Google OAuth credentials (Client ID and Secret) are missing or incorrect in Supabase.");
+          } else if (error.message.includes("redirect_uri_mismatch") || error.message.includes("400")) {
+            const redirectUrl = window.location.origin;
+            setGoogleError(`The redirect URL in your Google OAuth configuration doesn't match. Add this exact URL to your Google Cloud Console OAuth credentials as an authorized redirect URI: ${redirectUrl}`);
+          } else if (error.message.includes("requested path is invalid")) {
+            const currentUrl = window.location.origin;
+            setGoogleError(`The "Site URL" or "Redirect URL" is not properly set in Supabase. Go to Authentication > URL Configuration and make sure both URLs contain: ${currentUrl}`);
+          }
         }
         
         throw error;
@@ -141,7 +169,7 @@ const Auth = () => {
     } catch (error: any) {
       console.error("Google sign-in exception:", error);
       
-      if (!googleError) {
+      if (!googleError && isMounted.current) {
         toast({
           title: "Google Sign-In Error",
           description: error.message || "Could not connect to Google",
