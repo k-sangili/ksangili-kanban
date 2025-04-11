@@ -78,13 +78,6 @@ const Auth = () => {
           description: "We've sent you a confirmation link.",
         });
       }
-      
-      // Check if auto-confirmed
-      if (data.user && !data.user.confirmed_at) {
-        console.log("User needs email confirmation");
-      } else {
-        console.log("User created and confirmed automatically");
-      }
     } catch (error: any) {
       console.error("Sign-up error:", error);
       if (isMounted.current) {
@@ -93,6 +86,7 @@ const Auth = () => {
           description: error.message || "An error occurred during sign up",
           variant: "destructive",
         });
+        setLoading(false);
       }
     } finally {
       if (isMounted.current) {
@@ -146,22 +140,6 @@ const Auth = () => {
       
       if (error) {
         console.error("Google sign-in error:", error);
-        
-        if (isMounted.current) {
-          // Add more detailed error messages based on the error type
-          if (error.message.includes("provider is not enabled")) {
-            setGoogleError("The Google provider is not enabled in your Supabase project. Please enable it in your Supabase dashboard under Authentication > Providers > Google.");
-          } else if (error.status === 403 || error.message.includes("403")) {
-            setGoogleError("Received a 403 Forbidden error. This usually means your Google OAuth credentials (Client ID and Secret) are missing or incorrect in Supabase.");
-          } else if (error.message.includes("redirect_uri_mismatch") || error.message.includes("400")) {
-            const redirectUrl = window.location.origin;
-            setGoogleError(`The redirect URL in your Google OAuth configuration doesn't match. Add this exact URL to your Google Cloud Console OAuth credentials as an authorized redirect URI: ${redirectUrl}`);
-          } else if (error.message.includes("requested path is invalid")) {
-            const currentUrl = window.location.origin;
-            setGoogleError(`The "Site URL" or "Redirect URL" is not properly set in Supabase. Go to Authentication > URL Configuration and make sure both URLs contain: ${currentUrl}`);
-          }
-        }
-        
         throw error;
       }
       
@@ -169,12 +147,24 @@ const Auth = () => {
     } catch (error: any) {
       console.error("Google sign-in exception:", error);
       
-      if (!googleError && isMounted.current) {
-        toast({
-          title: "Google Sign-In Error",
-          description: error.message || "Could not connect to Google",
-          variant: "destructive",
-        });
+      if (isMounted.current) {
+        if (error.message.includes("provider is not enabled")) {
+          setGoogleError("The Google provider is not enabled in your Supabase project.");
+        } else if (error.status === 403 || error.message.includes("403")) {
+          setGoogleError("Received a 403 Forbidden error. Check your Google OAuth credentials in Supabase.");
+        } else if (error.message.includes("redirect_uri_mismatch")) {
+          const redirectUrl = window.location.origin;
+          setGoogleError(`Add this URL to your Google OAuth credentials: ${redirectUrl}`);
+        } else if (error.message.includes("requested path is invalid")) {
+          const currentUrl = window.location.origin;
+          setGoogleError(`Update the Site URL and Redirect URL in Supabase Authentication settings to: ${currentUrl}`);
+        } else {
+          toast({
+            title: "Google Sign-In Error",
+            description: error.message || "Could not connect to Google",
+            variant: "destructive",
+          });
+        }
       }
     }
   };

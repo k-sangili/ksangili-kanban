@@ -38,60 +38,36 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
       isMounted.current = false;
     };
   }, []);
-  
-  useEffect(() => {
-    if (user) {
-      console.log("ProfileInfo received user:", user.id);
-      console.log("User email:", user?.email);
-      console.log("User provider:", user?.app_metadata?.provider);
-      console.log("User metadata:", JSON.stringify(user.user_metadata, null, 2));
-      console.log("User app metadata:", JSON.stringify(user.app_metadata, null, 2));
-    }
-
-    if (profile) {
-      console.log("ProfileInfo received profile:", JSON.stringify(profile, null, 2));
-    } else {
-      console.log("ProfileInfo received no profile");
-    }
-  }, [user, profile]);
 
   // Update state when profile changes - in useEffect to avoid render issues
   useEffect(() => {
     if (!isMounted.current) return;
     
     if (profile) {
-      console.log("Setting form values from profile");
       setUsername(profile.username || '');
       setFullName(profile.full_name || '');
       setAvatarUrl(profile.avatar_url);
     } else if (user) {
       // Default values if no profile exists yet
-      console.log("Setting default form values from user");
       setUsername(user.email?.split('@')[0] || '');
       
       // For Google users, try to get name from user metadata
       const userMeta = user.user_metadata;
       if (userMeta?.full_name) {
         setFullName(userMeta.full_name);
-        console.log("Using full_name from metadata:", userMeta.full_name);
       } else if (userMeta?.name) {
         setFullName(userMeta.name);
-        console.log("Using name from metadata:", userMeta.name);
       } else {
         setFullName('');
-        console.log("No name found in metadata");
       }
       
       // For Google users, try to get avatar from user metadata
       if (userMeta?.avatar_url) {
         setAvatarUrl(userMeta.avatar_url);
-        console.log("Using avatar_url from metadata:", userMeta.avatar_url);
       } else if (userMeta?.picture) {
         setAvatarUrl(userMeta.picture);
-        console.log("Using picture from metadata:", userMeta.picture);
       } else {
         setAvatarUrl(null);
-        console.log("No avatar found in metadata");
       }
     }
   }, [profile, user]);
@@ -111,7 +87,6 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
     try {
       if (!isMounted.current) return;
       setUpdating(true);
-      console.log('Updating profile for user:', user.id);
       
       const updates = {
         id: user.id,
@@ -121,18 +96,13 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
         updated_at: new Date().toISOString(),
       };
       
-      console.log('Profile updates to be sent:', updates);
-      
       const { error } = await supabase
         .from('profiles')
         .upsert(updates);
         
       if (error) {
-        console.error('Error updating profile:', error);
         throw error;
       }
-      
-      console.log('Profile updated successfully');
       
       if (isMounted.current) {
         toast({
@@ -141,7 +111,6 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
         });
       }
     } catch (error: any) {
-      console.error('Error updating profile:', error);
       if (isMounted.current) {
         toast({
           title: 'Error updating profile',

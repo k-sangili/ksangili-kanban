@@ -26,7 +26,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         console.log("AuthContext state change:", event, "User ID:", currentSession?.user?.id);
-        console.log("Auth provider:", currentSession?.user?.app_metadata?.provider);
         
         // Only update state if component is still mounted
         if (isMounted) {
@@ -36,7 +35,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           if (event === 'SIGNED_IN') {
             console.log("User signed in:", currentSession?.user?.id);
-            console.log("Full user object:", JSON.stringify(currentSession?.user, null, 2));
             toast({
               title: "Signed in successfully",
               description: `Welcome${currentSession?.user?.email ? ` ${currentSession.user.email}` : ''}!`,
@@ -55,9 +53,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       console.log("AuthContext initial session:", currentSession?.user?.id || "No session");
-      if (currentSession?.user) {
-        console.log("Full user object:", JSON.stringify(currentSession.user, null, 2));
-      }
       
       // Only update state if component is still mounted
       if (isMounted) {
@@ -93,8 +88,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     loading,
   };
-
-  console.log("AuthContext current user:", user?.id || "No user");
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
