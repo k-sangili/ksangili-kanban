@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -33,11 +32,16 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
   useEffect(() => {
     if (user) {
       console.log("ProfileInfo received user:", user.id);
-      console.log("User metadata:", user.user_metadata);
+      console.log("User email:", user?.email);
+      console.log("User provider:", user?.app_metadata?.provider);
+      console.log("User metadata:", JSON.stringify(user.user_metadata, null, 2));
+      console.log("User app metadata:", JSON.stringify(user.app_metadata, null, 2));
     }
 
     if (profile) {
-      console.log("ProfileInfo received profile:", profile);
+      console.log("ProfileInfo received profile:", JSON.stringify(profile, null, 2));
+    } else {
+      console.log("ProfileInfo received no profile");
     }
   }, [user, profile]);
 
@@ -69,7 +73,10 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
       // For Google users, try to get avatar from user metadata
       if (userMeta?.avatar_url) {
         setAvatarUrl(userMeta.avatar_url);
-        console.log("Using avatar from metadata:", userMeta.avatar_url);
+        console.log("Using avatar_url from metadata:", userMeta.avatar_url);
+      } else if (userMeta?.picture) {
+        setAvatarUrl(userMeta.picture);
+        console.log("Using picture from metadata:", userMeta.picture);
       } else {
         setAvatarUrl(null);
         console.log("No avatar found in metadata");
@@ -107,17 +114,22 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
         .from('profiles')
         .upsert(updates);
         
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating profile:', error);
+        throw error;
+      }
+      
+      console.log('Profile updated successfully');
       
       toast({
         title: 'Profile updated',
         description: 'Your profile has been updated successfully.',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating profile:', error);
       toast({
         title: 'Error updating profile',
-        description: 'Unable to update your profile. Please try again.',
+        description: 'Unable to update your profile. Please try again. ' + error.message,
         variant: 'destructive',
       });
     } finally {

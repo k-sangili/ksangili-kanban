@@ -39,6 +39,9 @@ const Profile = () => {
   
   useEffect(() => {
     console.log("Profile component mounted, user:", user?.id || "No user");
+    console.log("User email:", user?.email);
+    console.log("User provider:", user?.app_metadata?.provider);
+    console.log("Full user object:", JSON.stringify(user, null, 2));
     
     if (!user) {
       console.log("No user found, redirecting to auth page");
@@ -71,6 +74,7 @@ const Profile = () => {
     try {
       console.log("Fetching profile for user ID:", user.id);
       console.log("User metadata:", user.user_metadata);
+      console.log("User app metadata:", user.app_metadata);
       
       // First check if the profile exists
       const { data, error } = await supabase
@@ -81,6 +85,8 @@ const Profile = () => {
       
       if (error) {
         console.error("Error fetching profile:", error);
+        console.log("Error code:", error.code);
+        
         if (error.code !== 'PGRST116') {
           throw error;
         } else {
@@ -99,11 +105,35 @@ const Profile = () => {
         const userMeta = user.user_metadata;
         console.log("User metadata for profile creation:", userMeta);
         
+        // For Google auth, check both possible name fields
+        let fullName = '';
+        if (userMeta?.full_name) {
+          fullName = userMeta.full_name;
+          console.log("Using full_name from metadata:", fullName);
+        } else if (userMeta?.name) {
+          fullName = userMeta.name;
+          console.log("Using name from metadata:", fullName);
+        } else {
+          console.log("No name found in metadata");
+        }
+        
+        // For Google auth, check avatar_url
+        let avatarUrl = null;
+        if (userMeta?.avatar_url) {
+          avatarUrl = userMeta.avatar_url;
+          console.log("Using avatar_url from metadata:", avatarUrl);
+        } else if (userMeta?.picture) {
+          avatarUrl = userMeta.picture;
+          console.log("Using picture from metadata:", avatarUrl);
+        } else {
+          console.log("No avatar found in metadata");
+        }
+        
         const newProfile = {
           id: user.id,
           username: user.email?.split('@')[0] || '',
-          full_name: userMeta?.full_name || userMeta?.name || '',
-          avatar_url: userMeta?.avatar_url || null,
+          full_name: fullName,
+          avatar_url: avatarUrl,
           updated_at: new Date().toISOString(),
         };
         
@@ -124,7 +154,25 @@ const Profile = () => {
           });
         } else {
           console.log("New profile created:", insertedProfile);
-          setProfile(insertedProfile || newProfile);
+          setProfile(insertedProfile || null);
+          
+          if (!insertedProfile) {
+            console.error("Inserted profile is null or undefined");
+            
+            // Try to fetch profile again if insert succeeded but returned no data
+            const { data: refetchedProfile, error: refetchError } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('id', user.id)
+              .single();
+              
+            if (refetchError) {
+              console.error("Error refetching profile:", refetchError);
+            } else {
+              console.log("Refetched profile:", refetchedProfile);
+              setProfile(refetchedProfile);
+            }
+          }
         }
       }
     } catch (error: any) {
