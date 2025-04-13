@@ -1,5 +1,5 @@
 
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
@@ -17,18 +17,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const isMounted = useRef(true);
 
   useEffect(() => {
     console.log("AuthContext: Initializing auth state...");
-    let isMounted = true;
-
+    
+    // Set isMounted to true when the component mounts
+    isMounted.current = true;
+    
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         console.log("AuthContext state change:", event, "User ID:", currentSession?.user?.id);
         
         // Only update state if component is still mounted
-        if (isMounted) {
+        if (isMounted.current) {
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
           setLoading(false);
@@ -55,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("AuthContext initial session:", currentSession?.user?.id || "No session");
       
       // Only update state if component is still mounted
-      if (isMounted) {
+      if (isMounted.current) {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         setLoading(false);
@@ -63,7 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
-      isMounted = false;
+      // Mark component as unmounted on cleanup
+      isMounted.current = false;
       subscription.unsubscribe();
     };
   }, []);
@@ -74,11 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await supabase.auth.signOut();
     } catch (error) {
       console.error("Error signing out:", error);
-      toast({
-        title: "Error signing out",
-        description: "There was a problem signing out",
-        variant: "destructive",
-      });
+      if (isMounted.current) {
+        toast({
+          title: "Error signing out",
+          description: "There was a problem signing out",
+          variant: "destructive",
+        });
+      }
     }
   };
 

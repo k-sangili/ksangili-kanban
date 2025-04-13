@@ -130,7 +130,6 @@ export function ProfileInfo({ user, profile, loading }: ProfileInfoProps) {
     return new Date(dateString).toLocaleString();
   };
 
-  
   return (
     <Card>
       <CardHeader>

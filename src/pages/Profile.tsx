@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,11 +36,16 @@ const Profile = () => {
   const [creatingBoard, setCreatingBoard] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  const isMounted = useRef(true);
+  
+  useEffect(() => {
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+  
   useEffect(() => {
     console.log("Profile component mounted, user:", user?.id || "No user");
-    console.log("User email:", user?.email);
-    console.log("User provider:", user?.app_metadata?.provider);
-    console.log("Full user object:", JSON.stringify(user, null, 2));
     
     if (!user) {
       console.log("No user found, redirecting to auth page");
@@ -50,15 +54,21 @@ const Profile = () => {
     }
     
     const loadProfileData = async () => {
+      if (!isMounted.current) return;
+      
       try {
         setLoading(true);
         await fetchProfile();
         await fetchUserBoards();
       } catch (err) {
         console.error("Error loading profile data:", err);
-        setError("Failed to load profile data. Please try refreshing the page.");
+        if (isMounted.current) {
+          setError("Failed to load profile data. Please try refreshing the page.");
+        }
       } finally {
-        setLoading(false);
+        if (isMounted.current) {
+          setLoading(false);
+        }
       }
     };
     
@@ -66,15 +76,13 @@ const Profile = () => {
   }, [user, navigate]);
 
   const fetchProfile = async () => {
-    if (!user) {
-      console.log("Cannot fetch profile: No user");
+    if (!user || !isMounted.current) {
+      console.log("Cannot fetch profile: No user or component unmounted");
       return;
     }
     
     try {
       console.log("Fetching profile for user ID:", user.id);
-      console.log("User metadata:", user.user_metadata);
-      console.log("User app metadata:", user.app_metadata);
       
       // First check if the profile exists
       const { data, error } = await supabase
@@ -85,7 +93,6 @@ const Profile = () => {
       
       if (error) {
         console.error("Error fetching profile:", error);
-        console.log("Error code:", error.code);
         
         if (error.code !== 'PGRST116') {
           throw error;
@@ -96,37 +103,30 @@ const Profile = () => {
       
       if (data) {
         console.log("Profile found:", data);
-        setProfile(data);
+        if (isMounted.current) {
+          setProfile(data);
+        }
       } else {
         // Create a profile if it doesn't exist
         console.log("Creating new profile for user:", user.id);
         
         // Get user metadata for potential profile info
         const userMeta = user.user_metadata;
-        console.log("User metadata for profile creation:", userMeta);
         
         // For Google auth, check both possible name fields
         let fullName = '';
         if (userMeta?.full_name) {
           fullName = userMeta.full_name;
-          console.log("Using full_name from metadata:", fullName);
         } else if (userMeta?.name) {
           fullName = userMeta.name;
-          console.log("Using name from metadata:", fullName);
-        } else {
-          console.log("No name found in metadata");
         }
         
         // For Google auth, check avatar_url
         let avatarUrl = null;
         if (userMeta?.avatar_url) {
           avatarUrl = userMeta.avatar_url;
-          console.log("Using avatar_url from metadata:", avatarUrl);
         } else if (userMeta?.picture) {
           avatarUrl = userMeta.picture;
-          console.log("Using picture from metadata:", avatarUrl);
-        } else {
-          console.log("No avatar found in metadata");
         }
         
         const newProfile = {
@@ -147,14 +147,18 @@ const Profile = () => {
           
         if (insertError) {
           console.error("Error creating profile:", insertError);
-          toast({
-            title: 'Error',
-            description: 'Could not create profile: ' + insertError.message,
-            variant: 'destructive',
-          });
+          if (isMounted.current) {
+            toast({
+              title: 'Error',
+              description: 'Could not create profile: ' + insertError.message,
+              variant: 'destructive',
+            });
+          }
         } else {
           console.log("New profile created:", insertedProfile);
-          setProfile(insertedProfile || null);
+          if (isMounted.current) {
+            setProfile(insertedProfile || null);
+          }
           
           if (!insertedProfile) {
             console.error("Inserted profile is null or undefined");
@@ -170,53 +174,90 @@ const Profile = () => {
               console.error("Error refetching profile:", refetchError);
             } else {
               console.log("Refetched profile:", refetchedProfile);
-              setProfile(refetchedProfile);
+              if (isMounted.current) {
+                setProfile(refetchedProfile);
+              }
             }
           }
         }
       }
     } catch (error: any) {
       console.error('Error in fetchProfile:', error);
-      toast({
-        title: 'Error fetching profile',
-        description: 'Unable to load your profile information: ' + error.message,
-        variant: 'destructive',
-      });
+      if (isMounted.current) {
+        toast({
+          title: 'Error fetching profile',
+          description: 'Unable to load your profile information: ' + error.message,
+          variant: 'destructive',
+        });
+      }
       throw error; // Re-throw so the outer try-catch can handle it
     }
   };
 
   const fetchUserBoards = async () => {
-    if (!user) {
-      console.log("Cannot fetch boards: No user");
+    if (!user || !isMounted.current) {
+      console.log("Cannot fetch boards: No user or component unmounted");
       return;
     }
     
     try {
       console.log("Fetching boards for user ID:", user.id);
       setLoadingBoards(true);
-      const { data, error } = await supabase
+      
+      // Get boards where user is owner
+      const { data: ownedBoards, error: ownedError } = await supabase
         .from('boards')
         .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error("Error fetching boards:", error);
-        throw error;
+      if (ownedError) {
+        console.error("Error fetching owned boards:", ownedError);
+        throw ownedError;
       }
       
-      console.log("Boards fetched:", data);
-      setBoards(data || []);
+      // Get boards shared with the user (user is a member)
+      const { data: memberBoards, error: memberError } = await supabase
+        .from('board_members')
+        .select('board_id, boards:board_id(*)')
+        .eq('user_id', user.id)
+        .neq('role', 'owner')
+        .order('created_at', { ascending: false });
+      
+      if (memberError) {
+        console.error("Error fetching shared boards:", memberError);
+        throw memberError;
+      }
+      
+      // Format shared boards data
+      const formattedSharedBoards = memberBoards?.map((item: any) => ({
+        id: item.boards.id,
+        name: item.boards.name,
+        description: item.boards.description,
+        created_at: item.boards.created_at,
+        updated_at: item.boards.updated_at,
+      })) || [];
+      
+      // Combine owned and shared boards
+      const allBoards = [...(ownedBoards || []), ...formattedSharedBoards];
+      
+      console.log("All boards fetched:", allBoards);
+      if (isMounted.current) {
+        setBoards(allBoards);
+      }
     } catch (error: any) {
       console.error('Error in fetchUserBoards:', error);
-      toast({
-        title: 'Error loading boards',
-        description: 'Unable to load your boards: ' + error.message,
-        variant: 'destructive',
-      });
+      if (isMounted.current) {
+        toast({
+          title: 'Error loading boards',
+          description: 'Unable to load your boards: ' + error.message,
+          variant: 'destructive',
+        });
+      }
     } finally {
-      setLoadingBoards(false);
+      if (isMounted.current) {
+        setLoadingBoards(false);
+      }
     }
   };
 
@@ -254,7 +295,7 @@ const Profile = () => {
       }
       
       console.log("New board created:", data);
-      if (data) {
+      if (data && isMounted.current) {
         setBoards(prevBoards => [data as Board, ...prevBoards]);
         toast({
           title: 'Board created',
@@ -265,13 +306,17 @@ const Profile = () => {
       }
     } catch (error: any) {
       console.error('Error in createNewBoard:', error);
-      toast({
-        title: 'Error creating board',
-        description: `Unable to create a new board: ${error.message || 'Unknown error'}`,
-        variant: 'destructive',
-      });
+      if (isMounted.current) {
+        toast({
+          title: 'Error creating board',
+          description: `Unable to create a new board: ${error.message || 'Unknown error'}`,
+          variant: 'destructive',
+        });
+      }
     } finally {
-      setCreatingBoard(false);
+      if (isMounted.current) {
+        setCreatingBoard(false);
+      }
     }
   };
 
