@@ -1,12 +1,11 @@
+
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
-import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { UserBoards } from '@/components/profile/UserBoards';
 import { ProfileInfo } from '@/components/profile/ProfileInfo';
 import { Header } from '@/components/layout/Header';
 
@@ -31,8 +30,8 @@ const Profile = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [boards, setBoards] = useState<Board[]>([]);
-  const [loadingBoards, setLoadingBoards] = useState(false);
+  const [board, setBoard] = useState<Board | null>(null);
+  const [loadingBoard, setLoadingBoard] = useState(false);
   const [creatingBoard, setCreatingBoard] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -59,7 +58,7 @@ const Profile = () => {
       try {
         setLoading(true);
         await fetchProfile();
-        await fetchUserBoards();
+        await fetchUserBoard();
       } catch (err) {
         console.error("Error loading profile data:", err);
         if (isMounted.current) {
@@ -194,74 +193,58 @@ const Profile = () => {
     }
   };
 
-  const fetchUserBoards = async () => {
+  const fetchUserBoard = async () => {
     if (!user || !isMounted.current) {
-      console.log("Cannot fetch boards: No user or component unmounted");
+      console.log("Cannot fetch board: No user or component unmounted");
       return;
     }
     
     try {
-      console.log("Fetching boards for user ID:", user.id);
-      setLoadingBoards(true);
+      console.log("Fetching board for user ID:", user.id);
+      setLoadingBoard(true);
       
-      // Get boards where user is owner
-      const { data: ownedBoards, error: ownedError } = await supabase
+      // Get the user's board
+      const { data, error } = await supabase
         .from('boards')
         .select('*')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .limit(1)
+        .single();
       
-      if (ownedError) {
-        console.error("Error fetching owned boards:", ownedError);
-        throw ownedError;
-      }
-      
-      // Get boards shared with the user (user is a member)
-      const { data: memberBoards, error: memberError } = await supabase
-        .from('board_members')
-        .select('board_id, boards:board_id(*)')
-        .eq('user_id', user.id)
-        .neq('role', 'owner')
-        .order('created_at', { ascending: false });
-      
-      if (memberError) {
-        console.error("Error fetching shared boards:", memberError);
-        throw memberError;
-      }
-      
-      // Format shared boards data
-      const formattedSharedBoards = memberBoards?.map((item: any) => ({
-        id: item.boards.id,
-        name: item.boards.name,
-        description: item.boards.description,
-        created_at: item.boards.created_at,
-        updated_at: item.boards.updated_at,
-      })) || [];
-      
-      // Combine owned and shared boards
-      const allBoards = [...(ownedBoards || []), ...formattedSharedBoards];
-      
-      console.log("All boards fetched:", allBoards);
-      if (isMounted.current) {
-        setBoards(allBoards);
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No board found, that's ok
+          console.log("No board found for user");
+          if (isMounted.current) {
+            setBoard(null);
+          }
+        } else {
+          console.error("Error fetching board:", error);
+          throw error;
+        }
+      } else {
+        console.log("Board fetched:", data);
+        if (isMounted.current) {
+          setBoard(data);
+        }
       }
     } catch (error: any) {
-      console.error('Error in fetchUserBoards:', error);
+      console.error('Error in fetchUserBoard:', error);
       if (isMounted.current) {
         toast({
-          title: 'Error loading boards',
-          description: 'Unable to load your boards: ' + error.message,
+          title: 'Error loading board',
+          description: 'Unable to load your board: ' + error.message,
           variant: 'destructive',
         });
       }
     } finally {
       if (isMounted.current) {
-        setLoadingBoards(false);
+        setLoadingBoard(false);
       }
     }
   };
 
-  const createNewBoard = async () => {
+  const createUserBoard = async () => {
     if (!user) {
       console.log("Cannot create board: No user");
       toast({
@@ -275,12 +258,12 @@ const Profile = () => {
     
     try {
       setCreatingBoard(true);
-      console.log("Creating new board for user:", user.id);
+      console.log("Creating board for user:", user.id);
       
       const newBoard = {
         user_id: user.id,
-        name: 'New Board',
-        description: 'Click to edit this board',
+        name: 'My Board',
+        description: 'Your personal kanban board',
       };
       
       const { data, error } = await supabase
@@ -294,22 +277,20 @@ const Profile = () => {
         throw error;
       }
       
-      console.log("New board created:", data);
+      console.log("Board created:", data);
       if (data && isMounted.current) {
-        setBoards(prevBoards => [data as Board, ...prevBoards]);
+        setBoard(data as Board);
         toast({
           title: 'Board created',
-          description: 'Your new board has been created successfully.',
+          description: 'Your board has been created successfully.',
         });
-        // Navigate to the new board after creation
-        navigate(`/board/${data.id}`);
       }
     } catch (error: any) {
-      console.error('Error in createNewBoard:', error);
+      console.error('Error in createUserBoard:', error);
       if (isMounted.current) {
         toast({
           title: 'Error creating board',
-          description: `Unable to create a new board: ${error.message || 'Unknown error'}`,
+          description: `Unable to create a board: ${error.message || 'Unknown error'}`,
           variant: 'destructive',
         });
       }
@@ -317,6 +298,42 @@ const Profile = () => {
       if (isMounted.current) {
         setCreatingBoard(false);
       }
+    }
+  };
+
+  const updateBoard = async (name: string, description: string) => {
+    if (!user || !board) return;
+    
+    try {
+      const updates = {
+        name,
+        description,
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { error } = await supabase
+        .from('boards')
+        .update(updates)
+        .eq('id', board.id);
+        
+      if (error) throw error;
+      
+      // Update local board state
+      if (isMounted.current) {
+        setBoard(prev => prev ? { ...prev, ...updates } : null);
+      }
+      
+      toast({
+        title: 'Board updated',
+        description: 'Your board has been updated successfully.',
+      });
+    } catch (error: any) {
+      console.error('Error updating board:', error);
+      toast({
+        title: 'Error updating board',
+        description: 'Unable to update the board. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -369,27 +386,53 @@ const Profile = () => {
               />
             </div>
             
-            {/* Boards Section */}
+            {/* Board Section */}
             <div className="md:col-span-2">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <div>
-                    <CardTitle className="text-xl font-bold">My Boards</CardTitle>
-                    <CardDescription>
-                      Create and manage your Kanban boards
-                    </CardDescription>
-                  </div>
-                  <Button onClick={createNewBoard} size="sm" disabled={creatingBoard}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    {creatingBoard ? 'Creating...' : 'New Board'}
-                  </Button>
+                <CardHeader>
+                  <CardTitle className="text-xl font-bold">My Board</CardTitle>
+                  <CardDescription>
+                    Manage your personal kanban board
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <UserBoards 
-                    boards={boards} 
-                    loading={loadingBoards} 
-                    onBoardsChange={setBoards}
-                  />
+                  {loadingBoard ? (
+                    <div className="flex justify-center py-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+                    </div>
+                  ) : board ? (
+                    <div className="space-y-4">
+                      <Card className="hover:shadow-md transition-shadow duration-200">
+                        <CardContent className="p-4">
+                          <div>
+                            <h3 className="text-lg font-semibold">{board.name}</h3>
+                            {board.description && (
+                              <p className="text-gray-500 text-sm mt-1">{board.description}</p>
+                            )}
+                            <p className="text-xs text-gray-400 mt-2">
+                              Last updated: {new Date(board.updated_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </CardContent>
+                        <div className="p-4 bg-gray-50 flex justify-end">
+                          <Button asChild>
+                            <a href={`/board/${board.id}`}>Open Board</a>
+                          </Button>
+                        </div>
+                      </Card>
+                    </div>
+                  ) : (
+                    <div className="text-center p-8 bg-gray-50 rounded-md">
+                      <h3 className="text-lg font-medium text-gray-600 mb-2">No board yet</h3>
+                      <p className="text-gray-500 mb-4">Create your board to get started</p>
+                      <Button 
+                        onClick={createUserBoard} 
+                        disabled={creatingBoard}
+                      >
+                        {creatingBoard ? 'Creating...' : 'Create Board'}
+                      </Button>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
