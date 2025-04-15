@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Task, TaskStatus, TaskPriority, KanbanColumn } from '@/types/kanban';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +15,11 @@ export const mapTaskFromSupabase = (task: any): Task => {
     owner: task.owner || null,
     dueDate: task.due_date ? new Date(task.due_date) : new Date(Date.now() + 86400000), // Default to tomorrow if not set
   };
+};
+
+// Helper function to sort tasks by due date in ascending order
+const sortTasksByDueDate = (tasks: Task[]): Task[] => {
+  return [...tasks].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
 };
 
 export const useKanbanTasks = (userId: string | undefined, boardId: string | undefined) => {
@@ -59,22 +63,26 @@ export const useKanbanTasks = (userId: string | undefined, boardId: string | und
 
       console.log('Tasks fetched:', data?.length || 0);
       
-      // Group tasks by status
-      const backlogTasks = data
-        ?.filter(task => task.status === 'backlog')
-        .map(mapTaskFromSupabase) || [];
+      // Group tasks by status and sort by due date
+      const backlogTasks = sortTasksByDueDate(
+        data?.filter(task => task.status === 'backlog')
+          .map(mapTaskFromSupabase) || []
+      );
       
-      const todoTasks = data
-        ?.filter(task => task.status === 'todo')
-        .map(mapTaskFromSupabase) || [];
+      const todoTasks = sortTasksByDueDate(
+        data?.filter(task => task.status === 'todo')
+          .map(mapTaskFromSupabase) || []
+      );
       
-      const inProgressTasks = data
-        ?.filter(task => task.status === 'in-progress')
-        .map(mapTaskFromSupabase) || [];
+      const inProgressTasks = sortTasksByDueDate(
+        data?.filter(task => task.status === 'in-progress')
+          .map(mapTaskFromSupabase) || []
+      );
       
-      const doneTasks = data
-        ?.filter(task => task.status === 'done')
-        .map(mapTaskFromSupabase) || [];
+      const doneTasks = sortTasksByDueDate(
+        data?.filter(task => task.status === 'done')
+          .map(mapTaskFromSupabase) || []
+      );
       
       setColumns([
         { id: 'backlog', title: 'Backlog', tasks: backlogTasks },
@@ -203,15 +211,20 @@ export const useKanbanTasks = (userId: string | undefined, boardId: string | und
       if (error) throw error;
   
       setColumns(prevColumns => {
-        const updatedColumns = prevColumns.map(column => ({
-          ...column,
-          tasks: column.tasks.map(task => {
+        const updatedColumns = prevColumns.map(column => {
+          const updatedTasks = column.tasks.map(task => {
             if (task.id === id) {
               return { ...task, title, description, priority, dueDate, owner };
             }
             return task;
-          }),
-        }));
+          });
+          
+          // Resort tasks by due date after updating
+          return { 
+            ...column, 
+            tasks: sortTasksByDueDate(updatedTasks)
+          };
+        });
         return updatedColumns;
       });
     } catch (error: any) {
