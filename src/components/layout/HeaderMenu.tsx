@@ -1,9 +1,8 @@
 
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { User, LogOut, Info } from 'lucide-react';
+import { User, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
