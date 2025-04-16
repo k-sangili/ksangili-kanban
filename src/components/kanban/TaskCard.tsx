@@ -30,14 +30,15 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
   
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     e.dataTransfer.setData('taskId', task.id);
+    e.dataTransfer.effectAllowed = 'move';
   };
 
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'done';
 
   return (
     <Card 
-      className="task-card mb-3 shadow-sm hover:shadow-md transition-shadow pointer-events-auto"
-      draggable
+      className="task-card mb-3 shadow-sm hover:shadow-md transition-shadow pointer-events-auto cursor-grab active:cursor-grabbing"
+      draggable="true"
       onDragStart={handleDragStart}
     >
       <CardHeader className="p-3 pb-0 flex flex-row items-start justify-between pointer-events-auto">

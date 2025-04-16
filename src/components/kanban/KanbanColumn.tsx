@@ -31,6 +31,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
     
     // Calculate the position for insertion
     if (columnRef.current && column.tasks.length > 0) {
@@ -76,13 +77,20 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({
     }
   };
 
-  const handleDragLeave = () => {
-    setDragOverIndex(null);
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    // Only reset if we're actually leaving the column (not just moving between child elements)
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setDragOverIndex(null);
+    }
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
-    moveTask(taskId, column.id as TaskStatus, dragOverIndex !== null ? dragOverIndex : undefined);
+    if (taskId) {
+      console.log(`Moving task ${taskId} to ${column.id} at index ${dragOverIndex}`);
+      moveTask(taskId, column.id as TaskStatus, dragOverIndex !== null ? dragOverIndex : undefined);
+    }
     setDragOverIndex(null);
   };
 

@@ -262,10 +262,70 @@ export const useKanbanTasks = (userId: string | undefined, boardId: string | und
       });
     }
   };
-  
-  // Alias for updateTaskStatus for drag and drop functionality
-  const moveTask = async (id: string, newStatus: TaskStatus) => {
-    await updateTaskStatus(id, newStatus);
+
+  // Enhanced moveTask function to support targeted indexes
+  const moveTask = async (id: string, newStatus: TaskStatus, targetIndex?: number) => {
+    try {
+      // Find the task in current columns
+      let movedTask: Task | undefined;
+      let sourceColumn: string | undefined;
+      
+      // First, update the task in the database
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: newStatus })
+        .eq('id', parseInt(id));
+
+      if (error) throw error;
+
+      // Then update the local state
+      setColumns(prevColumns => {
+        // Find the task that's being moved and its source column
+        prevColumns.forEach(column => {
+          const taskIndex = column.tasks.findIndex(task => task.id === id);
+          if (taskIndex !== -1) {
+            movedTask = { ...column.tasks[taskIndex], status: newStatus };
+            sourceColumn = column.id;
+          }
+        });
+
+        if (!movedTask) {
+          console.error('Task not found for moving:', id);
+          return prevColumns;
+        }
+
+        // Create new columns with the task removed from its source
+        const columnsWithoutTask = prevColumns.map(column => ({
+          ...column,
+          tasks: column.tasks.filter(task => task.id !== id)
+        }));
+
+        // Add the task to the target column at the specified index
+        return columnsWithoutTask.map(column => {
+          if (column.id === newStatus) {
+            const newTasks = [...column.tasks];
+            
+            // Insert at specific position if provided, otherwise add to the end
+            if (targetIndex !== undefined && targetIndex >= 0 && targetIndex <= newTasks.length) {
+              newTasks.splice(targetIndex, 0, movedTask!);
+            } else {
+              newTasks.push(movedTask!);
+            }
+            
+            return { ...column, tasks: newTasks };
+          }
+          return column;
+        });
+      });
+
+    } catch (error: any) {
+      console.error('Error moving task:', error.message);
+      toast({
+        title: "Error moving task",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
   };
 
   return {
