@@ -12,7 +12,7 @@ type KanbanContextType = {
   updateTaskStatus: (id: string, status: TaskStatus) => Promise<void>;
   updateTaskDetails: (id: string, title: string, description: string, priority: TaskPriority, dueDate: Date, owner: string | null) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
-  moveTask: (id: string, newStatus: TaskStatus) => Promise<void>;
+  moveTask: (id: string, newStatus: TaskStatus, targetIndex?: number) => Promise<void>;
 };
 
 const KanbanContext = createContext<KanbanContextType | undefined>(undefined);
