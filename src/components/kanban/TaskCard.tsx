@@ -37,7 +37,9 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
 
   return (
     <Card 
-      className="task-card mb-3 shadow-sm hover:shadow-md transition-shadow pointer-events-auto cursor-grab active:cursor-grabbing"
+      className={`task-card mb-3 shadow-sm hover:shadow-md transition-all pointer-events-auto cursor-grab active:cursor-grabbing ${
+        task.status === 'done' ? 'opacity-60 grayscale hover:opacity-70' : ''
+      }`}
       draggable="true"
       onDragStart={handleDragStart}
     >
